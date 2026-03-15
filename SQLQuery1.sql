@@ -115,3 +115,68 @@ CREATE TABLE Cart (
     FOREIGN KEY (product_id) REFERENCES Products(product_id)
 );
 GO
+-- 1. Tạo bảng InboxState (Dùng cho Consumer để chống trùng lặp)
+CREATE TABLE [InboxState] (
+    [Id] bigint NOT NULL IDENTITY,
+    [MessageId] uniqueidentifier NOT NULL,
+    [ConsumerId] uniqueidentifier NOT NULL,
+    [LockId] uniqueidentifier NOT NULL,
+    [RowVersion] rowversion NULL,
+    [Received] datetime2 NOT NULL,
+    [ReceiveCount] int NOT NULL,
+    [ExpirationTime] datetime2 NULL,
+    [Consumed] datetime2 NULL,
+    [Delivered] datetime2 NULL,
+    [LastSequenceNumber] bigint NULL,
+    CONSTRAINT [PK_InboxState] PRIMARY KEY ([Id]),
+    CONSTRAINT [AK_InboxState_MessageId_ConsumerId] UNIQUE ([MessageId], [ConsumerId])
+);
+GO
+
+-- 2. Tạo bảng OutboxMessage (Dùng để lưu event chuẩn bị gửi)
+CREATE TABLE [OutboxMessage] (
+    [SequenceNumber] bigint NOT NULL IDENTITY,
+    [EnqueueTime] datetime2 NULL,
+    [SentTime] datetime2 NOT NULL,
+    [Headers] nvarchar(max) NULL,
+    [Properties] nvarchar(max) NULL,
+    [InboxMessageId] uniqueidentifier NULL,
+    [InboxConsumerId] uniqueidentifier NULL,
+    [OutboxId] uniqueidentifier NULL,
+    [MessageId] uniqueidentifier NOT NULL,
+    [ContentType] nvarchar(256) NOT NULL,
+    [MessageType] nvarchar(max) NOT NULL,
+    [Body] nvarchar(max) NOT NULL,
+    [ConversationId] uniqueidentifier NULL,
+    [CorrelationId] uniqueidentifier NULL,
+    [InitiatorId] uniqueidentifier NULL,
+    [RequestId] uniqueidentifier NULL,
+    [SourceAddress] nvarchar(256) NULL,
+    [DestinationAddress] nvarchar(256) NULL,
+    [ResponseAddress] nvarchar(256) NULL,
+    [FaultAddress] nvarchar(256) NULL,
+    [ExpirationTime] datetime2 NULL,
+    CONSTRAINT [PK_OutboxMessage] PRIMARY KEY ([SequenceNumber])
+);
+GO
+
+-- 3. Tạo bảng OutboxState (Dùng để MassTransit quản lý trạng thái Worker)
+CREATE TABLE [OutboxState] (
+    [OutboxId] uniqueidentifier NOT NULL,
+    [LockId] uniqueidentifier NOT NULL,
+    [RowVersion] rowversion NULL,
+    [Created] datetime2 NOT NULL,
+    [Delivered] datetime2 NULL,
+    [LastSequenceNumber] bigint NULL,
+    CONSTRAINT [PK_OutboxState] PRIMARY KEY ([OutboxId])
+);
+GO
+
+-- 4. Tạo các Index để truy vấn nhanh (Bắt buộc để Worker chạy mượt)
+CREATE INDEX [IX_InboxState_Delivered] ON [InboxState] ([Delivered]);
+CREATE INDEX [IX_OutboxMessage_EnqueueTime] ON [OutboxMessage] ([EnqueueTime]);
+CREATE INDEX [IX_OutboxMessage_ExpirationTime] ON [OutboxMessage] ([ExpirationTime]);
+CREATE INDEX [IX_OutboxMessage_InboxMessageId_InboxConsumerId_SequenceNumber] ON [OutboxMessage] ([InboxMessageId], [InboxConsumerId], [SequenceNumber]);
+CREATE INDEX [IX_OutboxMessage_OutboxId_SequenceNumber] ON [OutboxMessage] ([OutboxId], [SequenceNumber]);
+CREATE INDEX [IX_OutboxState_Created] ON [OutboxState] ([Created]);
+GO

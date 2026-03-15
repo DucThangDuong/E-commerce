@@ -16,9 +16,30 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
-        public void AddAsync(Customer customer)
+        public async Task AddAsync(string email, string password, string fullname)
         {
-            _context.Customers.Add(customer);
+            string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            string username = email.Substring(0, email.LastIndexOf('@'));
+            Customer? newuser = await _context.Customers.FirstOrDefaultAsync(e => e.Email == email);
+            if (newuser != null)
+            {
+                newuser.PasswordHash = passwordHash;
+                newuser.CustomAvatar = "default-avatar.jpg";
+            }
+            else
+            {
+                var newUser = new Customer
+                {
+                    Name = fullname,
+                    Email = email,
+                    PasswordHash = passwordHash,
+                    CreatedAt = DateTime.UtcNow,
+                    Role = "User",
+                    IsActive = true,
+                    LoginProvider = "Custom"
+                };
+                _context.Customers.Add(newUser);
+            }
         }
 
         public async Task<Customer?> GetByEmailAsync(string email)
@@ -26,9 +47,14 @@ namespace Infrastructure.Repositories
             return await _context.Customers.FirstOrDefaultAsync(c => c.Email == email);
         }
 
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            return await _context.Customers.AnyAsync(c => c.Email == email);
+        }
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
         }
+
     }
 }

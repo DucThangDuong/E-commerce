@@ -10,6 +10,8 @@
     <PackageReference Include="FastEndpoints" Version="7.2.0" />
     <PackageReference Include="FastEndpoints.Attributes" Version="8.0.1" />
     <PackageReference Include="FastEndpoints.Messaging.Core" Version="8.0.1" />
+    <PackageReference Include="MassTransit" Version="8.3.0" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.23" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.25" />

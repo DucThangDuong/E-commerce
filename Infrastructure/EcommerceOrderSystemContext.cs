@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Domain.Entities;
+using MassTransit;
+
 namespace Infrastructure;
 
 public partial class EcommerceOrderSystemContext : DbContext
@@ -35,7 +37,7 @@ public partial class EcommerceOrderSystemContext : DbContext
     {
         modelBuilder.Entity<Cart>(entity =>
         {
-            entity.HasKey(e => e.CartId).HasName("PK__Cart__2EF52A27A6CFEA96");
+            entity.HasKey(e => e.CartId).HasName("PK__Cart__2EF52A278693004C");
 
             entity.ToTable("Cart");
 
@@ -57,7 +59,7 @@ public partial class EcommerceOrderSystemContext : DbContext
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__D54EE9B4183D0A64");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__D54EE9B450460CEE");
 
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.Description)
@@ -74,9 +76,9 @@ public partial class EcommerceOrderSystemContext : DbContext
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB85DD33F049");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB850C43A1EF");
 
-            entity.HasIndex(e => e.Email, "UQ__Customer__AB6E6164F91A257A").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Customer__AB6E6164C2667868").IsUnique();
 
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.Address)
@@ -131,13 +133,15 @@ public partial class EcommerceOrderSystemContext : DbContext
                 .HasColumnName("role");
         });
 
+        modelBuilder.AddInboxStateEntity();
+
         modelBuilder.Entity<Inventory>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC499AD3369D");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC49E3B71B61");
 
             entity.ToTable("Inventory");
 
-            entity.HasIndex(e => e.ProductId, "UQ__Inventor__47027DF4D68E31C9").IsUnique();
+            entity.HasIndex(e => e.ProductId, "UQ__Inventor__47027DF49BD01BE4").IsUnique();
 
             entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
             entity.Property(e => e.LastUpdated)
@@ -156,7 +160,7 @@ public partial class EcommerceOrderSystemContext : DbContext
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__Orders__46596229002B6E9B");
+            entity.HasKey(e => e.OrderId).HasName("PK__Orders__46596229ADCDA9FB");
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
@@ -181,7 +185,7 @@ public partial class EcommerceOrderSystemContext : DbContext
 
         modelBuilder.Entity<OrderItem>(entity =>
         {
-            entity.HasKey(e => new { e.OrderId, e.ProductId }).HasName("PK__OrderIte__022945F6F6E89A49");
+            entity.HasKey(e => new { e.OrderId, e.ProductId }).HasName("PK__OrderIte__022945F68CA55102");
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ProductId).HasColumnName("product_id");
@@ -201,11 +205,14 @@ public partial class EcommerceOrderSystemContext : DbContext
                 .HasConstraintName("FK__OrderItem__produ__66603565");
         });
 
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__ED1FC9EAA0CF66AF");
+            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__ED1FC9EA12131FAF");
 
-            entity.HasIndex(e => e.OrderId, "UQ__Payments__46596228658F3B8B").IsUnique();
+            entity.HasIndex(e => e.OrderId, "UQ__Payments__46596228EF05536E").IsUnique();
 
             entity.Property(e => e.PaymentId).HasColumnName("payment_id");
             entity.Property(e => e.Amount)
@@ -230,9 +237,9 @@ public partial class EcommerceOrderSystemContext : DbContext
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Products__47027DF5BCB70DB5");
+            entity.HasKey(e => e.ProductId).HasName("PK__Products__47027DF54110CAE9");
 
-            entity.HasIndex(e => e.Sku, "UQ__Products__CA1ECF0DD242D88C").IsUnique();
+            entity.HasIndex(e => e.Sku, "UQ__Products__CA1ECF0DDCB4EAD7").IsUnique();
 
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.BasePrice)
