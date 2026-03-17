@@ -25,10 +25,11 @@ namespace Application.Features.Products.Queries
             {
                 var products = await _context.Context.Products
                     .AsNoTracking()
-                    .OrderBy(e=>e.ProductId)
+                    .OrderBy(e => e.ProductId)
                     .Skip(query.skip)
                     .Take(query.take)
-                    .Include(e=>e.Inventory)
+                    .Include(e => e.Inventory)
+                    .Include(e => e.ProductImages)
                     .Select(e => new ResProductDto
                     {
                         BasePrice = e.BasePrice,
@@ -36,7 +37,8 @@ namespace Application.Features.Products.Queries
                         Description = e.Description,
                         Name = e.Name,
                         ProductId = e.ProductId,
-                        StockQuantity = e.Inventory.StockQuantity
+                        StockQuantity = e.Inventory.StockQuantity,
+                        imageUrl = e.ProductImages.Select(e => e.ImageUrl).ToList(),
                     })
                     .ToListAsync(ct);
 

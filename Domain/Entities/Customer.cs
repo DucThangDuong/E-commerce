@@ -27,6 +27,8 @@ public partial class Customer
 
     public string? LoginProvider { get; set; }
 
+    public string? GoogleId { get; set; }
+
     public string? CustomAvatar { get; set; }
 
     public string? GoogleAvatar { get; set; }

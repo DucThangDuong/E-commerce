@@ -1,4 +1,5 @@
 using API.DTOs;
+using API.Extendsion;
 using Application.Features.Carts.Command;
 using FastEndpoints;
 using Infrastructure;
@@ -11,17 +12,17 @@ namespace API.EndPoints.Cart
         public override void Configure()
         {
             Post("/cart");
-            AllowAnonymous();
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         }
         public override async Task HandleAsync(ReqCreateCartDto req, CancellationToken ct)
         {
-            if (req.customer_id == 0 || req.product_id == 0 || req.quantity == 0)
+            int userId = HttpContext.User.GetUserId();
+            if (userId == 0 || req.product_id == 0 || req.quantity == 0)
             {
                 await Send.ResponseAsync(new { message = "customer_id, product_id and quantity must be provided and greater than 0" }, statusCode: 400, ct);
                 return;
             }
-            var result = await Handler.HandleAsync(new AddItemCartCustomerCommand(req.customer_id, req.product_id, req.quantity), ct);
+            var result = await Handler.HandleAsync(new AddItemCartCustomerCommand(userId, req.product_id, req.quantity), ct);
             if (result.IsSuccess)
             {
                 await Send.ResponseAsync(null, 201);

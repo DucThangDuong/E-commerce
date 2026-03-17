@@ -15,3 +15,11 @@ public class LoginValidator : Validator<ReqLoginDTo>
             .NotEmpty().WithMessage("Mật khẩu không được để trống");
     }
 }
+public class LoginGoogle : Validator<ReqGoogleLoginDTO>
+{
+    public LoginGoogle()
+    {
+        RuleFor(x => x.IdToken)
+            .NotEmpty().WithMessage("Yêu Cầu TokenID ");
+    }
+}

@@ -41,6 +41,10 @@ namespace Infrastructure.Repositories
                 _context.Customers.Add(newUser);
             }
         }
+        public async Task<Customer?> GetUserByRefreshTokenAsync(string refreshToken)
+        {
+            return await _context.Customers.AsNoTracking().FirstOrDefaultAsync(e => e.RefreshToken == refreshToken);
+        }
 
         public async Task<Customer?> GetByEmailAsync(string email)
         {
@@ -56,5 +60,9 @@ namespace Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task AddAsync(Customer customer)
+        {
+            await _context.Customers.AddAsync(customer);
+        }
     }
 }

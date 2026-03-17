@@ -1,3 +1,5 @@
+using Amazon.S3;
+using API.Services;
 using Application.Consumers;
 using Application.Interfaces;
 using Application.IServices;
@@ -33,14 +35,14 @@ namespace API
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddFastEndpoints();
-            builder.Services.AddDbContext < EcommerceOrderSystemContext > (options =>
+            builder.Services.AddDbContext<EcommerceOrderSystemContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"]);
             });
             builder.Services.AddMassTransit(x =>
             {
                 x.AddConsumer<SendMail>();
-                
+
                 x.AddEntityFrameworkOutbox<EcommerceOrderSystemContext>(o =>
                 {
                     o.UseSqlServer();
@@ -90,36 +92,53 @@ namespace API
                         IssuerSigningKey = new SymmetricSecurityKey(key),
                         ClockSkew = TimeSpan.Zero
                     };
-                    //    options.Events = new JwtBearerEvents
+                    //options.Events = new JwtBearerEvents
+                    //{
+                    //    OnMessageReceived = context =>
                     //    {
-                    //        OnMessageReceived = context =>
+                    //        var accessToken = context.Request.Query["access_token"];
+                    //        var path = context.HttpContext.Request.Path;
+                    //        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
                     //        {
-                    //            var accessToken = context.Request.Query["access_token"];
-                    //            var path = context.HttpContext.Request.Path;
-                    //            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
-                    //            {
-                    //                context.Token = accessToken;
-                    //            }
-                    //            return Task.CompletedTask;
+                    //            context.Token = accessToken;
                     //        }
-                    //    };
+                    //        return Task.CompletedTask;
+                    //    }
+                    //};
                 });
-            builder.Services.AddScoped < IJWTTokenServices, JwtTokenService > ();
+            builder.Services.AddScoped<IJWTTokenServices, JwtTokenService>();
 
             // Đăng ký cấu hình Email
             builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
             builder.Services.AddScoped<IEmailSender, MailSender>();
+            builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
-            builder.Services.AddScoped < IUnitOfWork, UnitOfWork > ();
-            builder.Services.AddScoped <ICustomerRepository,CustomerRepository> ();
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+            var storageConfig = builder.Configuration.GetSection("Storage");
+            builder.Services.AddSingleton<IAmazonS3>(sp =>
+            {
+                var config = new AmazonS3Config
+                {
+                    ServiceURL = storageConfig["ServiceUrl"],
+                    ForcePathStyle = true
+                };
+                return new AmazonS3Client(
+                    storageConfig["AccessKey"],
+                    storageConfig["SecretKey"], config);
+            });
+            builder.Services.AddSingleton<IStorageService, S3StorageService>();
 
-            builder.Services.AddScoped < Application.Features.Customers.Queries.GetLoginUserHandler > ();
-            builder.Services.AddScoped <Application.Features.Customers.Commands.AddUserHandler> ();
-            builder.Services.AddScoped < Application.Features.Carts.Command.AddItemCartCustomerHandler > ();
+            builder.Services.AddScoped<Application.Features.Customers.Queries.GetLoginUserHandler>();
+            builder.Services.AddScoped<Application.Features.Customers.Commands.AddUserHandler>();
+            builder.Services.AddScoped<Application.Features.Carts.Command.AddItemCartCustomerHandler>();
             builder.Services.AddScoped<Application.Features.Categories.Command.AddNewCategoryHandler>();
             builder.Services.AddScoped<Application.Features.Products.Commands.AddNewProductHandler>();
             builder.Services.AddScoped<Application.Features.Categories.Queries.GetAllCategoryHandler>();
             builder.Services.AddScoped<Application.Features.Products.Queries.GetAllProductHandler>();
+            builder.Services.AddScoped<Application.Features.Customers.Commands.AddLoginGoogleCustomerHandler>();
+            builder.Services.AddScoped<Application.Features.Customers.Queries.GetCustomerProfileHandler>();
+            builder.Services.AddScoped<Application.Features.Carts.Queries.GetItemCartCustomerHandler>();
             builder.Services.AddHttpContextAccessor();
             var app = builder.Build();
             app.UseRouting();

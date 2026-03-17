@@ -26,6 +26,7 @@ CREATE TABLE Customers (
 
     role VARCHAR(50) DEFAULT 'User' CHECK(role IN ('User','Admin')),
     loginProvider VARCHAR(20) NULL Check(LoginProvider In('Custom','Google')),
+    googleId VARCHAR(255),
     customAvatar VARCHAR(255) DEFAULT 'default-avatar.jpg',
     googleAvatar VARCHAR(255),
     isActive BIT DEFAULT 1,
@@ -114,6 +115,16 @@ CREATE TABLE Cart (
     FOREIGN KEY (product_id) REFERENCES Products(product_id)
 );
 GO
+CREATE TABLE ProductImages (
+    image_id INT IDENTITY(1,1) PRIMARY KEY,
+    product_id INT NOT NULL,
+    image_url VARCHAR(500) NOT NULL,    -- Đường dẫn lưu file (VD: URL từ MinIO)
+    is_primary BIT DEFAULT 0,           -- 1 = Ảnh bìa (Thumbnail chính), 0 = Ảnh phụ
+    display_order INT DEFAULT 0,        -- Dùng để sắp xếp thứ tự ảnh hiển thị trên giao diện
+    uploaded_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE
+);
+GO
 -- 1. Tạo bảng InboxState (Dùng cho Consumer để chống trùng lặp)
 CREATE TABLE [InboxState] (
     [Id] bigint NOT NULL IDENTITY,
@@ -131,6 +142,7 @@ CREATE TABLE [InboxState] (
     CONSTRAINT [AK_InboxState_MessageId_ConsumerId] UNIQUE ([MessageId], [ConsumerId])
 );
 GO
+
 
 -- 2. Tạo bảng OutboxMessage (Dùng để lưu event chuẩn bị gửi)
 CREATE TABLE [OutboxMessage] (

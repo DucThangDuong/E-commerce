@@ -54,7 +54,6 @@ namespace Application.Features.Customers.Queries
                     AccessToken = accessToken,
                     RefreshToken = refreshToken.Token,
                     RefreshTokenExpiryTime = refreshToken.ExpiryDate,
-                    CustomerId = userEntity.CustomerId
                 });
             }
             catch (Exception ex)

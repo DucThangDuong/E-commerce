@@ -10,8 +10,10 @@ namespace Application.Interfaces
     public interface ICustomerRepository
     {
         public Task AddAsync(string email,string password,string fullname);
+        public Task AddAsync(Customer customer);
         public Task SaveChangesAsync();
         public Task<Customer?> GetByEmailAsync(string email);
         public Task<bool> EmailExistsAsync(string email);
+        public Task<Customer?> GetUserByRefreshTokenAsync(string refreshToken);
     }
 }

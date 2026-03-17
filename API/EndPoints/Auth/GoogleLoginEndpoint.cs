@@ -1,21 +1,23 @@
-using API.DTOs;
-using Application.Features.Customers.Queries;
+﻿using API.DTOs;
+using Application.Features.Customers.Commands;
+using Application.IServices;
 using FastEndpoints;
 
-namespace API.EndPoints.Auth;
+namespace API.Endpoints.Auth;
 
-public class LoginEndpoint : Endpoint<ReqLoginDTo>
+public class GoogleLoginEndpoint : Endpoint<ReqGoogleLoginDTO>
 {
-    public GetLoginUserHandler Handler {get;set;}=null!;
+    public AddLoginGoogleCustomerHandler _handler { get; set; } = null!;
     public override void Configure()
     {
-        Post("/login");
+        Post("/google");
         AllowAnonymous();
-        Options(x=>x.RequireRateLimiting("auth_strict"));
+        Options(x => x.RequireRateLimiting("auth_strict"));
     }
-    public override async Task HandleAsync(ReqLoginDTo req, CancellationToken ct)
+
+    public override async Task HandleAsync(ReqGoogleLoginDTO req, CancellationToken ct)
     {
-        var result = await Handler.HandleAsync(new LoginCommand(req.Email, req.Password), ct);
+        var result = await _handler.HandleAsync(new AddLoginGoogleCustomerCommand(req.IdToken));
         if (result.IsSuccess)
         {
             if (result.Data != null)
@@ -24,12 +26,12 @@ public class LoginEndpoint : Endpoint<ReqLoginDTo>
                 {
                     HttpOnly = true,
                     Expires = result.Data.RefreshTokenExpiryTime,
-                    Secure = true, 
+                    Secure = true,
                     SameSite = SameSiteMode.None,
                     IsEssential = true
                 });
             }
-            await Send.ResponseAsync(result.Data?.AccessToken, result.StatusCode, ct);
+            await Send.ResponseAsync(result.Data!, result.StatusCode, ct);
         }
         else
         {

@@ -1,21 +1,21 @@
 using Application.Common;
+using Application.DTOs.Services;
 using Application.Interfaces;
+using Application.IServices;
 using Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Application.Features.Products.Commands
 {
-    public record AddNewProductCommand(int category_id ,string name ,string? description ,decimal base_price,int stock_quatity );
+    public record AddNewProductCommand(int category_id ,string name ,string? description ,decimal base_price,int stock_quatity,List<IFormFile>? images );
     public class AddNewProductHandler:ICommandHandler<AddNewProductCommand>
     {
         private readonly IUnitOfWork _context;
-        public AddNewProductHandler(IUnitOfWork context) {
+        public IStorageService StorageService;
+        public AddNewProductHandler(IUnitOfWork context , IStorageService storageService) {
             _context = context;
+            StorageService = storageService;
         }
 
         public async Task<Result> HandleAsync(AddNewProductCommand command, CancellationToken ct = default)
@@ -28,6 +28,16 @@ namespace Application.Features.Products.Commands
                 {
                     return Result.Failure("Category not found", 404);
                 }
+                var imageUrls = new List<string>();
+                if (command.images != null && command.images.Any())
+                {
+                    foreach (var image in command.images)
+                    {
+                        var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
+                        var url = await StorageService.UploadFileAsync(image.OpenReadStream(), fileName, image.ContentType, StorageType.product);
+                        imageUrls.Add(url);
+                    }
+                }
                 Product newProduct = new Product
                 {
                     CategoryId = command.category_id,
@@ -39,7 +49,14 @@ namespace Application.Features.Products.Commands
                         StockQuantity = command.stock_quatity,
                         ReservedQuantity = 0,
                         LastUpdated = DateTime.UtcNow
-                    }
+                    },
+                    ProductImages = imageUrls?.Select((url, index) => new ProductImage
+                    {
+                        ImageUrl = url,
+                        IsPrimary = index == 0,
+                        DisplayOrder = index,
+                        UploadedAt = DateTime.UtcNow
+                    }).ToList() ?? new List<ProductImage>()
                 };
                 await _context.ProductRepository.AddAsync(newProduct);
                 await _context.SaveChangesAsync();
