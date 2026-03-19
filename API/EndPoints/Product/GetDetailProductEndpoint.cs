@@ -1,6 +1,6 @@
-﻿using Application.DTOs.Response;
 using Application.Features.Products.Queries;
 using FastEndpoints;
+using MediatR;
 
 namespace API.EndPoints.Product
 {
@@ -8,24 +8,27 @@ namespace API.EndPoints.Product
     {
         public int productId { get; set; }
     }
-    public class GetDetailProductEndpoint:Endpoint<ReqGetDetalProductDto>
+
+    public class GetDetailProductEndpoint : Endpoint<ReqGetDetalProductDto>
     {
-        public GetDetailProductHandler _handler { get; set; } = null!;
+        public IMediator Mediator { get; set; } = null!;
+
         public override void Configure()
         {
             Get("/product/detail");
             AllowAnonymous();
         }
+
         public override async Task HandleAsync(ReqGetDetalProductDto req, CancellationToken ct)
         {
-            var result = await _handler.HandleAsync(new GetDetailProductQuery(req.productId));
+            var result = await Mediator.Send(new GetDetailProductQuery(req.productId), ct);
             if (result.IsSuccess)
             {
                 await Send.ResponseAsync(result.Data, 200, ct);
             }
             else
             {
-                await Send.ResponseAsync(result.Error, result.StatusCode, ct);
+                await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
             }
         }
     }

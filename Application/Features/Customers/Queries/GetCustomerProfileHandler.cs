@@ -1,45 +1,34 @@
-﻿using Application.Common;
+using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
 namespace Application.Features.Customers.Queries
 {
-    public record GetCustomerProfileQuery(int customerId);
-    public class GetCustomerProfileHandler : IQueryHandler<GetCustomerProfileQuery, ResCustomerPrivate>
+    public record GetCustomerProfileQuery(int CustomerId) : IRequest<Result<ResCustomerPrivate>>;
+
+    public class GetCustomerProfileHandler : IRequestHandler<GetCustomerProfileQuery, Result<ResCustomerPrivate>>
     {
-        public readonly IUnitOfWork _context;
-        public GetCustomerProfileHandler(IUnitOfWork context) { 
-            _context = context;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public GetCustomerProfileHandler(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
         }
-        public async Task<Result<ResCustomerPrivate>> HandleAsync(GetCustomerProfileQuery query, CancellationToken ct = default)
+
+        public async Task<Result<ResCustomerPrivate>> Handle(GetCustomerProfileQuery query, CancellationToken ct)
         {
             try
             {
-
-                var customer = await _context.Context.Customers
-                    .AsNoTracking()
-                    .Where(x => x.CustomerId == query.customerId)
-                    .Select(x => new ResCustomerPrivate
-                    {
-                        avatarUrl = x.CustomAvatar,
-                        email = x.Email,
-                        id = x.CustomerId,
-                        name = x.Name
-                    })
-                    .FirstOrDefaultAsync(ct);
+                var customer = await _unitOfWork.CustomerRepository.GetCustomerProfileAsync(query.CustomerId, ct);
                 if (customer == null)
                 {
                     return Result<ResCustomerPrivate>.Failure("Not found", 404);
                 }
                 return Result<ResCustomerPrivate>.Success(customer);
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 return Result<ResCustomerPrivate>.Failure(ex.Message, 400);
             }
         }

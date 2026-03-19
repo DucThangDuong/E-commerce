@@ -1,7 +1,5 @@
 using Amazon.S3;
-using API.Services;
 using Application.Consumers;
-using Application.Features.Carts.Command;
 using Application.Interfaces;
 using Application.IServices;
 using FastEndpoints;
@@ -9,6 +7,7 @@ using Infrastructure;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
 using MassTransit;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,17 +21,20 @@ namespace API
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // ──────────── CORS ────────────
             builder.Services.AddCors(option =>
             {
                 option.AddPolicy("CORS", options =>
                 {
                     options
-                    .WithOrigins("Http://localhost:5173")
+                    .WithOrigins("http://localhost:5173")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
                 });
             });
+
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddFastEndpoints();
@@ -40,6 +42,14 @@ namespace API
             {
                 options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"]);
             });
+
+            // ──────────── MediatR (auto-scan all handlers) ────────────
+            builder.Services.AddMediatR(cfg =>
+            {
+                cfg.RegisterServicesFromAssemblyContaining<Application.Features.Customers.Commands.AddUserHandler>();
+            });
+
+            // ──────────── MassTransit + RabbitMQ ────────────
             builder.Services.AddMassTransit(x =>
             {
                 x.AddConsumer<SendMail>();
@@ -60,6 +70,8 @@ namespace API
                     cfg.ConfigureEndpoints(context);
                 });
             });
+
+            // ──────────── Rate Limiting ────────────
             builder.Services.AddRateLimiter(options =>
             {
                 options.AddPolicy("auth_strict", httpContext =>
@@ -73,6 +85,8 @@ namespace API
                         }));
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             });
+
+            // ──────────── Authentication (JWT) ────────────
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -93,29 +107,26 @@ namespace API
                         IssuerSigningKey = new SymmetricSecurityKey(key),
                         ClockSkew = TimeSpan.Zero
                     };
-                    //options.Events = new JwtBearerEvents
-                    //{
-                    //    OnMessageReceived = context =>
-                    //    {
-                    //        var accessToken = context.Request.Query["access_token"];
-                    //        var path = context.HttpContext.Request.Path;
-                    //        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
-                    //        {
-                    //            context.Token = accessToken;
-                    //        }
-                    //        return Task.CompletedTask;
-                    //    }
-                    //};
                 });
+
+            builder.Services.AddAuthorization();
+
+            // ──────────── Services (DI) ────────────
             builder.Services.AddScoped<IJWTTokenServices, JwtTokenService>();
 
-            // Đăng ký cấu hình Email
+            // Email
             builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
             builder.Services.AddScoped<IEmailSender, MailSender>();
             builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            // Repositories (individual registration for DI into UnitOfWork)
             builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
+            builder.Services.AddScoped<ICartRepository, CartRepository>();
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<IProductRepository, ProductRepository>();
+            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+            // Storage (MinIO / S3)
             var storageConfig = builder.Configuration.GetSection("Storage");
             builder.Services.AddSingleton<IAmazonS3>(sp =>
             {
@@ -130,20 +141,21 @@ namespace API
             });
             builder.Services.AddSingleton<IStorageService, S3StorageService>();
 
-            builder.Services.AddScoped<Application.Features.Customers.Queries.GetLoginUserHandler>();
-            builder.Services.AddScoped<Application.Features.Customers.Commands.AddUserHandler>();
-            builder.Services.AddScoped<Application.Features.Carts.Command.AddItemCartCustomerHandler>();
-            builder.Services.AddScoped<Application.Features.Categories.Command.AddNewCategoryHandler>();
-            builder.Services.AddScoped<Application.Features.Products.Commands.AddNewProductHandler>();
-            builder.Services.AddScoped<Application.Features.Categories.Queries.GetAllCategoryHandler>();
-            builder.Services.AddScoped<Application.Features.Products.Queries.GetAllProductHandler>();
-            builder.Services.AddScoped<Application.Features.Customers.Commands.AddLoginGoogleCustomerHandler>();
-            builder.Services.AddScoped<Application.Features.Customers.Queries.GetCustomerProfileHandler>();
-            builder.Services.AddScoped<Application.Features.Carts.Queries.GetItemCartCustomerHandler>();
-            builder.Services.AddScoped<Application.Features.Products.Queries.GetDetailProductHandler>();
-            builder.Services.AddScoped<DeleteItemCartCustomerHandler>();
             builder.Services.AddHttpContextAccessor();
+
             var app = builder.Build();
+
+            // ──────────── Global Exception Handling ────────────
+            app.UseExceptionHandler(errorApp =>
+            {
+                errorApp.Run(async context =>
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new { message = "An unexpected error occurred. Please try again later." });
+                });
+            });
+
             app.UseRouting();
             app.UseCors("CORS");
             app.UseHttpsRedirection();
@@ -157,4 +169,3 @@ namespace API
         }
     }
 }
-

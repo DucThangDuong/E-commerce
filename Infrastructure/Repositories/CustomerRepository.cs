@@ -1,30 +1,27 @@
-﻿using Application.Interfaces;
+using Application.DTOs.Response;
+using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Infrastructure.Repositories
 {
-    public class CustomerRepository:ICustomerRepository
+    public class CustomerRepository : ICustomerRepository
     {
         private readonly EcommerceOrderSystemContext _context;
-        public CustomerRepository(EcommerceOrderSystemContext context) { 
+
+        public CustomerRepository(EcommerceOrderSystemContext context)
+        {
             _context = context;
         }
 
         public async Task AddAsync(string email, string password, string fullname)
         {
             string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
-            string username = email.Substring(0, email.LastIndexOf('@'));
-            Customer? newuser = await _context.Customers.FirstOrDefaultAsync(e => e.Email == email);
-            if (newuser != null)
+            Customer? existingUser = await _context.Customers.FirstOrDefaultAsync(e => e.Email == email);
+            if (existingUser != null)
             {
-                newuser.PasswordHash = passwordHash;
-                newuser.CustomAvatar = "default-avatar.jpg";
+                existingUser.PasswordHash = passwordHash;
+                existingUser.CustomAvatar = "default-avatar.jpg";
             }
             else
             {
@@ -41,6 +38,7 @@ namespace Infrastructure.Repositories
                 _context.Customers.Add(newUser);
             }
         }
+
         public async Task<Customer?> GetUserByRefreshTokenAsync(string refreshToken)
         {
             return await _context.Customers.AsNoTracking().FirstOrDefaultAsync(e => e.RefreshToken == refreshToken);
@@ -55,14 +53,25 @@ namespace Infrastructure.Repositories
         {
             return await _context.Customers.AnyAsync(c => c.Email == email);
         }
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
 
         public async Task AddAsync(Customer customer)
         {
             await _context.Customers.AddAsync(customer);
+        }
+
+        public async Task<ResCustomerPrivate?> GetCustomerProfileAsync(int customerId, CancellationToken ct = default)
+        {
+            return await _context.Customers
+                .AsNoTracking()
+                .Where(x => x.CustomerId == customerId)
+                .Select(x => new ResCustomerPrivate
+                {
+                    avatarUrl = x.CustomAvatar,
+                    email = x.Email,
+                    id = x.CustomerId,
+                    name = x.Name
+                })
+                .FirstOrDefaultAsync(ct);
         }
     }
 }

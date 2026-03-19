@@ -1,17 +1,16 @@
-﻿using Application.Interfaces;
+using Application.DTOs.Response;
+using Application.Interfaces;
 using Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Repositories
 {
-    public class CategoryRepository: ICategoryRepository
+    public class CategoryRepository : ICategoryRepository
     {
         private readonly EcommerceOrderSystemContext _context;
-        public CategoryRepository(EcommerceOrderSystemContext context) { 
+
+        public CategoryRepository(EcommerceOrderSystemContext context)
+        {
             _context = context;
         }
 
@@ -25,6 +24,22 @@ namespace Infrastructure.Repositories
             };
             await _context.Categories.AddAsync(category);
             return category;
+        }
+
+        public async Task<List<ResCategoryDto>> GetAllCategoriesAsync(int take, CancellationToken ct = default)
+        {
+            return await _context.Categories
+                .AsNoTracking()
+                .OrderBy(e => e.CategoryId)
+                .Take(take)
+                .Select(c => new ResCategoryDto
+                {
+                    CategoryId = c.CategoryId,
+                    Description = c.Description,
+                    Name = c.Name,
+                    Picture = c.Picture
+                })
+                .ToListAsync(ct);
         }
     }
 }

@@ -1,11 +1,10 @@
-﻿using Application.Interfaces;
 using Domain.Entities;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using System;
 namespace Infrastructure;
 
-public partial class EcommerceOrderSystemContext : DbContext, IApplicationDbContext
+public partial class EcommerceOrderSystemContext : DbContext
 {
     public EcommerceOrderSystemContext()
     {

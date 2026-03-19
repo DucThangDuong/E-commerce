@@ -1,13 +1,12 @@
-using Application.Interfaces;
-using Application.IServices;
+using Application.Features.Customers.Queries;
 using FastEndpoints;
+using MediatR;
 
 namespace API.Endpoints.Auth;
 
 public class RefreshTokenEndpoint : EndpointWithoutRequest
 {
-    public ICustomerRepository Repo { get; set; } = null!;
-    public IJWTTokenServices JwtTokenService { get; set; } = null!;
+    public IMediator Mediator { get; set; } = null!;
 
     public override void Configure()
     {
@@ -18,28 +17,15 @@ public class RefreshTokenEndpoint : EndpointWithoutRequest
     public override async Task HandleAsync(CancellationToken ct)
     {
         var refreshToken = HttpContext.Request.Cookies["refreshToken"];
-        if (string.IsNullOrEmpty(refreshToken))
+        var result = await Mediator.Send(new RefreshTokenCommand(refreshToken), ct);
+
+        if (result.IsSuccess)
         {
-            await Send.ResponseAsync(new { message = "Không tìm thấy Refresh Token trong Cookie." }, 400, ct);
-            return;
+            await Send.ResponseAsync(new { success = true, accessToken = result.Data!.AccessToken }, 200, ct);
         }
-        var user = await Repo.GetUserByRefreshTokenAsync(refreshToken);
-        if (user == null)
+        else
         {
-            await Send.ResponseAsync(new { message = "Token không hợp lệ." }, 401, ct);
-            return;
+            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
         }
-        if (user.RefreshToken != refreshToken)
-        {
-            await Send.ResponseAsync(new { message = "Token không khớp." }, 401, ct);
-            return;
-        }
-        if (user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-        {
-            await Send.ResponseAsync(new { message = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." }, 401, ct);
-            return;
-        }
-        var newAccessToken = JwtTokenService.GenerateAccessToken(user.CustomerId, user.Email!, user.Role!);
-        await Send.ResponseAsync(new { success = true, accessToken = newAccessToken }, 200, ct);
     }
 }

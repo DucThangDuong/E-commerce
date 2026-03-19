@@ -1,9 +1,5 @@
+using Application.DTOs.Response;
 using Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Application.Interfaces
 {
@@ -11,5 +7,8 @@ namespace Application.Interfaces
     {
         Task AddAsync(Product product);
         Task<int?> GetStockQuantityAsync(int productId, CancellationToken ct = default);
+        Task<List<ResProductDto>> GetAllProductsAsync(int skip, int take, CancellationToken ct = default);
+        Task<ResProductDto?> GetProductDetailAsync(int productId, CancellationToken ct = default);
+        Task<bool> CategoryExistsAsync(int categoryId, CancellationToken ct = default);
     }
 }

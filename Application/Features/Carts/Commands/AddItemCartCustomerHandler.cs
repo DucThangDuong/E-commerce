@@ -1,38 +1,36 @@
 using Application.Common;
 using Application.Interfaces;
 using Domain.Entities;
+using MediatR;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace Application.Features.Carts.Command
+namespace Application.Features.Carts.Commands
 {
-    public record AddItemCartCustomerCommand(int CustomerId, int ProductId, int Quantity);
-    
-    public class AddItemCartCustomerHandler : ICommandHandler<AddItemCartCustomerCommand>
+    public record AddItemCartCustomerCommand(int CustomerId, int ProductId, int Quantity) : IRequest<Result>;
+
+    public class AddItemCartCustomerHandler : IRequestHandler<AddItemCartCustomerCommand, Result>
     {
-        private readonly IUnitOfWork _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AddItemCartCustomerHandler> _logger;
 
-        public AddItemCartCustomerHandler(IUnitOfWork context, ILogger<AddItemCartCustomerHandler> logger) 
-        { 
-            _context = context;
+        public AddItemCartCustomerHandler(IUnitOfWork unitOfWork, ILogger<AddItemCartCustomerHandler> logger)
+        {
+            _unitOfWork = unitOfWork;
             _logger = logger;
         }
 
-        public async Task<Result> HandleAsync(AddItemCartCustomerCommand command, CancellationToken ct = default)
+        public async Task<Result> Handle(AddItemCartCustomerCommand command, CancellationToken ct)
         {
             try
             {
-                int? stockQuantity = await _context.ProductRepository.GetStockQuantityAsync(command.ProductId, ct);
+                int? stockQuantity = await _unitOfWork.ProductRepository.GetStockQuantityAsync(command.ProductId, ct);
 
                 if (stockQuantity == null)
                 {
                     return Result.Failure("Product not found.", 404);
                 }
 
-                var existingCart = await _context.CartRepository.GetCartAsync(command.CustomerId, command.ProductId);
+                var existingCart = await _unitOfWork.CartRepository.GetCartAsync(command.CustomerId, command.ProductId);
                 int currentQuantityInCart = existingCart?.Quantity ?? 0;
 
                 if (stockQuantity.Value == 0 || (currentQuantityInCart + command.Quantity) > stockQuantity.Value)
@@ -46,15 +44,16 @@ namespace Application.Features.Carts.Command
                 }
                 else
                 {
-                    Cart newCart = new Cart{
+                    Cart newCart = new Cart
+                    {
                         CustomerId = command.CustomerId,
                         ProductId = command.ProductId,
                         Quantity = command.Quantity
                     };
-                    await _context.CartRepository.AddNewCartAsync(newCart);
+                    await _unitOfWork.CartRepository.AddNewCartAsync(newCart);
                 }
-                
-                await _context.SaveChangesAsync();
+
+                await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success();
             }
             catch (Exception ex)

@@ -3,70 +3,79 @@ using Application.DTOs.Services;
 using Application.Interfaces;
 using Application.IServices;
 using Domain.Entities;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+using MediatR;
 
 namespace Application.Features.Products.Commands
 {
-    public record AddNewProductCommand(int category_id ,string name ,string? description ,decimal base_price,int stock_quatity,List<IFormFile>? images );
-    public class AddNewProductHandler:ICommandHandler<AddNewProductCommand>
+    public record AddNewProductCommand(
+        int CategoryId, 
+        string Name, 
+        string? Description, 
+        decimal BasePrice, 
+        int StockQuantity, 
+        List<FileUploadDto>? Images) : IRequest<Result>;
+
+    public class AddNewProductHandler : IRequestHandler<AddNewProductCommand, Result>
     {
-        private readonly IUnitOfWork _context;
-        public IStorageService StorageService;
-        public AddNewProductHandler(IUnitOfWork context , IStorageService storageService) {
-            _context = context;
-            StorageService = storageService;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IStorageService _storageService;
+
+        public AddNewProductHandler(IUnitOfWork unitOfWork, IStorageService storageService)
+        {
+            _unitOfWork = unitOfWork;
+            _storageService = storageService;
         }
 
-        public async Task<Result> HandleAsync(AddNewProductCommand command, CancellationToken ct = default)
+        public async Task<Result> Handle(AddNewProductCommand command, CancellationToken ct)
         {
             try
             {
-
-                bool hasCategory = _context.Context.Categories.AsNoTracking().Any(c => c.CategoryId == command.category_id);
+                bool hasCategory = await _unitOfWork.ProductRepository.CategoryExistsAsync(command.CategoryId, ct);
                 if (!hasCategory)
                 {
                     return Result.Failure("Category not found", 404);
                 }
+
                 var imageUrls = new List<string>();
-                if (command.images != null && command.images.Any())
+                if (command.Images != null && command.Images.Any())
                 {
-                    foreach (var image in command.images)
+                    foreach (var image in command.Images)
                     {
                         var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
-                        var url = await StorageService.UploadFileAsync(image.OpenReadStream(), fileName, image.ContentType, StorageType.product);
+                        var url = await _storageService.UploadFileAsync(image.Stream, fileName, image.ContentType, StorageType.product);
                         imageUrls.Add(url);
                     }
                 }
+
                 Product newProduct = new Product
                 {
-                    CategoryId = command.category_id,
-                    Name = command.name,
-                    Description = command.description,
-                    BasePrice = command.base_price,
+                    CategoryId = command.CategoryId,
+                    Name = command.Name,
+                    Description = command.Description,
+                    BasePrice = command.BasePrice,
                     Inventory = new Inventory
                     {
-                        StockQuantity = command.stock_quatity,
+                        StockQuantity = command.StockQuantity,
                         ReservedQuantity = 0,
                         LastUpdated = DateTime.UtcNow
                     },
-                    ProductImages = imageUrls?.Select((url, index) => new ProductImage
+                    ProductImages = imageUrls.Select((url, index) => new ProductImage
                     {
                         ImageUrl = url,
                         IsPrimary = index == 0,
                         DisplayOrder = index,
                         UploadedAt = DateTime.UtcNow
-                    }).ToList() ?? new List<ProductImage>()
+                    }).ToList()
                 };
-                await _context.ProductRepository.AddAsync(newProduct);
-                await _context.SaveChangesAsync();
+
+                await _unitOfWork.ProductRepository.AddAsync(newProduct);
+                await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success();
             }
             catch (Exception ex)
             {
                 return Result.Failure($"An error occurred while adding the product: {ex.Message}", 500);
             }
-
         }
     }
 }

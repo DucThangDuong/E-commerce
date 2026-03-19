@@ -1,11 +1,11 @@
-﻿using Amazon.S3;
+using Amazon.S3;
 using Amazon.S3.Model;
 using Application.DTOs.Services;
 using Application.IServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace API.Services
+namespace Infrastructure.Services
 {
     public class S3StorageService : IStorageService
     {

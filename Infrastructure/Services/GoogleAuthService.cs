@@ -1,4 +1,4 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.DTOs.Services;
 using Application.Interfaces;
 using Application.IServices;
@@ -6,7 +6,7 @@ using Domain.Entities;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 
-namespace API.Services
+namespace Infrastructure.Services
 {
     public class GoogleAuthService : IGoogleAuthService
     {

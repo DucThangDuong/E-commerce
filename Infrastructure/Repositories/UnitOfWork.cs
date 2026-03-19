@@ -1,35 +1,33 @@
-﻿using Application.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Application.Interfaces;
 
 namespace Infrastructure.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        public readonly EcommerceOrderSystemContext _context;
-        public ICustomerRepository CustomerRepository { get; private set; }
-        public ICartRepository CartRepository { get; private set; }
-        public IApplicationDbContext Context { get; private set; }
-        public ICategoryRepository CategoryRepository { get; private set; }
-        public IProductRepository ProductRepository { get; private set; }
+        private readonly EcommerceOrderSystemContext _context;
 
+        public ICustomerRepository CustomerRepository { get; }
+        public ICartRepository CartRepository { get; }
+        public ICategoryRepository CategoryRepository { get; }
+        public IProductRepository ProductRepository { get; }
 
-        public UnitOfWork(EcommerceOrderSystemContext context)
+        public UnitOfWork(
+            EcommerceOrderSystemContext context,
+            ICustomerRepository customerRepository,
+            ICartRepository cartRepository,
+            ICategoryRepository categoryRepository,
+            IProductRepository productRepository)
         {
             _context = context;
-            CustomerRepository = new CustomerRepository(_context);
-            CartRepository = new CartRepository(_context);
-            CategoryRepository = new CategoryRepository(_context);
-            ProductRepository = new ProductRepository(_context);
-            Context = _context;
+            CustomerRepository = customerRepository;
+            CartRepository = cartRepository;
+            CategoryRepository = categoryRepository;
+            ProductRepository = productRepository;
         }
 
-        public async Task SaveChangesAsync()
+        public async Task SaveChangesAsync(CancellationToken ct = default)
         {
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
         }
     }
 }

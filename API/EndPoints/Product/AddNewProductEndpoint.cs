@@ -1,24 +1,40 @@
 using API.DTOs;
+using Application.DTOs.Services;
 using Application.Features.Products.Commands;
 using FastEndpoints;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Application.IServices;
-using Application.DTOs.Services;
 
 namespace API.EndPoints.Product
 {
     public class AddNewProductEndpoint : Endpoint<ReqCreateProductDto>
     {
-        public AddNewProductHandler Handler { get; set; } = null!;
+        public IMediator Mediator { get; set; } = null!;
+
         public override void Configure()
         {
             Post("/product");
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
+            Roles("Admin");
             AllowFileUploads();
         }
+
         public override async Task HandleAsync(ReqCreateProductDto req, CancellationToken ct)
         {
-            var result = await Handler.HandleAsync(new AddNewProductCommand(req.category_id, req.name, req.description, req.base_price,req.stock_quantity, req.images));
+            // Convert IFormFile to FileUploadDto (keeps IFormFile in API layer only)
+            List<FileUploadDto>? fileUploads = null;
+            if (req.images != null && req.images.Any())
+            {
+                fileUploads = req.images.Select(f => new FileUploadDto
+                {
+                    Stream = f.OpenReadStream(),
+                    FileName = f.FileName,
+                    ContentType = f.ContentType
+                }).ToList();
+            }
+
+            var result = await Mediator.Send(new AddNewProductCommand(
+                req.category_id, req.name, req.description, req.base_price, req.stock_quantity, fileUploads), ct);
             if (result.IsSuccess)
             {
                 await Send.ResponseAsync(null, 201, ct);

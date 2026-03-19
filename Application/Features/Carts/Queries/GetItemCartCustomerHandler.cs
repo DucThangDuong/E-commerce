@@ -1,45 +1,27 @@
-﻿using Application.Common;
+using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
 namespace Application.Features.Carts.Queries
 {
-    public record GetItemCartCustomerQuery(int customerId);
-    public class GetItemCartCustomerHandler : IQueryHandler<GetItemCartCustomerQuery, List<ResCartDto>>
+    public record GetItemCartCustomerQuery(int CustomerId) : IRequest<Result<List<ResCartDto>>>;
+
+    public class GetItemCartCustomerHandler : IRequestHandler<GetItemCartCustomerQuery, Result<List<ResCartDto>>>
     {
-        private readonly IUnitOfWork _context;
-        public GetItemCartCustomerHandler(IUnitOfWork context)
+        private readonly IUnitOfWork _unitOfWork;
+
+        public GetItemCartCustomerHandler(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
-        public async Task<Result<List<ResCartDto>>> HandleAsync(GetItemCartCustomerQuery query, CancellationToken ct = default)
+
+        public async Task<Result<List<ResCartDto>>> Handle(GetItemCartCustomerQuery query, CancellationToken ct)
         {
             try
             {
-
-                var result = _context.Context.Carts
-                    .Where(e => e.CustomerId == query.customerId)
-                    .Select(e => new ResCartDto
-                    {
-                        BasePrice = e.Product.BasePrice,
-                        CartId = e.CartId,
-                        CategoryId = e.Product.CategoryId,
-                        Description = e.Product.Description,
-                        Name = e.Product.Name,
-                        ProductId = e.Product.ProductId,
-                        Quantity = e.Quantity,
-                        StockQuantity = e.Product.Inventory.StockQuantity,
-                        imageUrl = e.Product.ProductImages.Select(e => e.ImageUrl).ToList(),
-                    }).ToList();
-
+                var result = await _unitOfWork.CartRepository.GetCartItemsByCustomerIdAsync(query.CustomerId, ct);
                 return Result<List<ResCartDto>>.Success(result);
-
             }
             catch (Exception ex)
             {

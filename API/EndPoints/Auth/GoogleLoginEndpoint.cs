@@ -1,13 +1,14 @@
-﻿using API.DTOs;
+using API.DTOs;
 using Application.Features.Customers.Commands;
-using Application.IServices;
 using FastEndpoints;
+using MediatR;
 
 namespace API.Endpoints.Auth;
 
 public class GoogleLoginEndpoint : Endpoint<ReqGoogleLoginDTO>
 {
-    public AddLoginGoogleCustomerHandler _handler { get; set; } = null!;
+    public IMediator Mediator { get; set; } = null!;
+
     public override void Configure()
     {
         Post("/google");
@@ -17,7 +18,7 @@ public class GoogleLoginEndpoint : Endpoint<ReqGoogleLoginDTO>
 
     public override async Task HandleAsync(ReqGoogleLoginDTO req, CancellationToken ct)
     {
-        var result = await _handler.HandleAsync(new AddLoginGoogleCustomerCommand(req.IdToken));
+        var result = await Mediator.Send(new AddLoginGoogleCustomerCommand(req.IdToken), ct);
         if (result.IsSuccess)
         {
             if (result.Data != null)

@@ -1,44 +1,35 @@
-﻿using Application.Common;
+using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
 namespace Application.Features.Products.Queries
 {
-    public record GetDetailProductQuery(int productId);
-    public class GetDetailProductHandler : IQueryHandler<GetDetailProductQuery, ResProductDto>
+    public record GetDetailProductQuery(int ProductId) : IRequest<Result<ResProductDto>>;
+
+    public class GetDetailProductHandler : IRequestHandler<GetDetailProductQuery, Result<ResProductDto>>
     {
-        private readonly IUnitOfWork _context;
-        public GetDetailProductHandler(IUnitOfWork context) { 
-            _context = context;
+        private readonly IUnitOfWork _unitOfWork;
+
+        public GetDetailProductHandler(IUnitOfWork unitOfWork)
+        {
+            _unitOfWork = unitOfWork;
         }
-        public async Task<Result<ResProductDto>> HandleAsync(GetDetailProductQuery query, CancellationToken ct = default)
+
+        public async Task<Result<ResProductDto>> Handle(GetDetailProductQuery query, CancellationToken ct)
         {
             try
             {
-                var products = await _context.Context.Products
-                    .Where(e => e.ProductId == query.productId)
-                    .Select(e => new ResProductDto
-                    {
-                        BasePrice = e.BasePrice,
-                        CategoryId = e.CategoryId,
-                        Description = e.Description,
-                        Name = e.Name,
-                        ProductId = e.ProductId,
-                        StockQuantity = e.Inventory.StockQuantity,
-                        imageUrl = e.ProductImages.Select(e => e.ImageUrl).ToList(),
-                    }).FirstOrDefaultAsync();
-
-                return Result<ResProductDto>.Success(products);
+                var product = await _unitOfWork.ProductRepository.GetProductDetailAsync(query.ProductId, ct);
+                if (product == null)
+                {
+                    return Result<ResProductDto>.Failure("Product not found", 404);
+                }
+                return Result<ResProductDto>.Success(product);
             }
             catch (Exception ex)
             {
-                return Result<ResProductDto>.Failure($"Lỗi khi lấy danh sách sản phẩm: {ex.Message}", 500);
+                return Result<ResProductDto>.Failure($"Lỗi khi lấy chi tiết sản phẩm: {ex.Message}", 500);
             }
         }
     }

@@ -1,27 +1,26 @@
-﻿using Application.Common;
+using Application.Common;
 using Application.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
-namespace Application.Features.Categories.Command
+namespace Application.Features.Categories.Commands
 {
-    public record AddNewCategoryCommand(string Name, string Description,string? Picture);
-    public class AddNewCategoryHandler : ICommandHandler<AddNewCategoryCommand>
+    public record AddNewCategoryCommand(string Name, string Description, string? Picture) : IRequest<Result>;
+
+    public class AddNewCategoryHandler : IRequestHandler<AddNewCategoryCommand, Result>
     {
-        private readonly IUnitOfWork _context;
-        public AddNewCategoryHandler(IUnitOfWork context)
+        private readonly IUnitOfWork _unitOfWork;
+
+        public AddNewCategoryHandler(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
-        public async Task<Result> HandleAsync(AddNewCategoryCommand command, CancellationToken ct = default)
+
+        public async Task<Result> Handle(AddNewCategoryCommand command, CancellationToken ct)
         {
-           var value= await _context.CategoryRepository.AddNewCategoryAsync(command.Name, command.Description, command.Picture);
-            if(value!=null)
+            var value = await _unitOfWork.CategoryRepository.AddNewCategoryAsync(command.Name, command.Description, command.Picture);
+            if (value != null)
             {
-                await _context.SaveChangesAsync();
+                await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success();
             }
             else
