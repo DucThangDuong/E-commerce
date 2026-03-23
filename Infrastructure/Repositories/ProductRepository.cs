@@ -38,6 +38,39 @@ namespace Infrastructure.Repositories
                 {
                     BasePrice = e.BasePrice,
                     CategoryId = e.CategoryId,
+                    BrandId = e.BrandId,
+                    Description = e.Description,
+                    Name = e.Name,
+                    ProductId = e.ProductId,
+                    StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
+                    imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                })
+                .ToListAsync(ct);
+        }
+
+        public async Task<List<ResProductDto>> GetFilteredProductsAsync(List<int>? categoryIds, List<int>? brandIds, int skip, int take, CancellationToken ct = default)
+        {
+            var query = _context.Products.AsNoTracking().AsQueryable();
+
+            if (categoryIds != null && categoryIds.Any())
+            {
+                query = query.Where(p => categoryIds.Contains(p.CategoryId));
+            }
+
+            if (brandIds != null && brandIds.Any())
+            {
+                query = query.Where(p => p.BrandId.HasValue && brandIds.Contains(p.BrandId.Value));
+            }
+
+            return await query
+                .OrderBy(e => e.ProductId)
+                .Skip(skip)
+                .Take(take)
+                .Select(e => new ResProductDto
+                {
+                    BasePrice = e.BasePrice,
+                    CategoryId = e.CategoryId,
+                    BrandId = e.BrandId,
                     Description = e.Description,
                     Name = e.Name,
                     ProductId = e.ProductId,
@@ -56,6 +89,7 @@ namespace Infrastructure.Repositories
                 {
                     BasePrice = e.BasePrice,
                     CategoryId = e.CategoryId,
+                    BrandId = e.BrandId,
                     Description = e.Description,
                     Name = e.Name,
                     ProductId = e.ProductId,
@@ -87,6 +121,7 @@ namespace Infrastructure.Repositories
                     {
                         BasePrice = f.Product.BasePrice,
                         CategoryId = f.Product.CategoryId,
+                        BrandId = f.Product.BrandId,
                         Description = f.Product.Description,
                         Name = f.Product.Name,
                         ProductId = f.Product.ProductId,

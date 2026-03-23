@@ -9,6 +9,7 @@ namespace Infrastructure.Repositories
         public ICustomerRepository CustomerRepository { get; }
         public ICartRepository CartRepository { get; }
         public ICategoryRepository CategoryRepository { get; }
+        public IBrandRepository BrandRepository { get; }
         public IProductRepository ProductRepository { get; }
 
         public UnitOfWork(
@@ -16,12 +17,14 @@ namespace Infrastructure.Repositories
             ICustomerRepository customerRepository,
             ICartRepository cartRepository,
             ICategoryRepository categoryRepository,
+            IBrandRepository brandRepository,
             IProductRepository productRepository)
         {
             _context = context;
             CustomerRepository = customerRepository;
             CartRepository = cartRepository;
             CategoryRepository = categoryRepository;
+            BrandRepository = brandRepository;
             ProductRepository = productRepository;
         }
 

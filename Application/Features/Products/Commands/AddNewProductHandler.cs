@@ -14,13 +14,13 @@ namespace Application.Features.Products.Commands
         string? Description, 
         decimal BasePrice, 
         int StockQuantity, 
+        int BrandId ,
         List<FileUploadDto>? Images) : IRequest<Result>;
 
     public class AddNewProductHandler : IRequestHandler<AddNewProductCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IStorageService _storageService;
-
         public AddNewProductHandler(IUnitOfWork unitOfWork, IStorageService storageService)
         {
             _unitOfWork = unitOfWork;
@@ -54,6 +54,7 @@ namespace Application.Features.Products.Commands
                     Name = command.Name,
                     Description = command.Description,
                     BasePrice = command.BasePrice,
+                    BrandId = command.BrandId,
                     Inventory = new Inventory
                     {
                         StockQuantity = command.StockQuantity,

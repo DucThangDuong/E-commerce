@@ -15,8 +15,8 @@ namespace API.EndPoints.Product
         {
             Post("/product");
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
-            //Roles("Admin");
-            //AllowFileUploads();
+            Roles("Admin");
+            AllowFileUploads();
         }
 
         public override async Task HandleAsync(ReqCreateProductDto req, CancellationToken ct)
@@ -33,7 +33,7 @@ namespace API.EndPoints.Product
             }
 
             var result = await Mediator.Send(new AddNewProductCommand(
-                req.category_id, req.name, req.description, req.base_price, req.stock_quantity, fileUploads), ct);
+                req.category_id, req.name, req.description, req.base_price, req.stock_quantity,req.brand_id, fileUploads), ct);
             if (result.IsSuccess)
             {
                 await Send.ResponseAsync(null, 201, ct);

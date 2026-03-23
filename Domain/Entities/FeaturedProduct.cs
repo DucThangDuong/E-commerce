@@ -3,7 +3,6 @@ using System.Collections.Generic;
 
 namespace Domain.Entities;
 
-
 public partial class FeaturedProduct
 {
     public int FeaturedId { get; set; }

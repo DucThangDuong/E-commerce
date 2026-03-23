@@ -1,7 +1,9 @@
 using API.DTOs;
 using API.Extendsion;
 using Application.Features.Customers.Commands;
+using Domain.Entities;
 using FastEndpoints;
+using Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 

@@ -131,6 +131,7 @@ namespace API
             builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
             builder.Services.AddScoped<ICartRepository, CartRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<IBrandRepository, BrandRepository>();
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -148,7 +149,8 @@ namespace API
                     storageConfig["SecretKey"], config);
             });
             builder.Services.AddSingleton<IStorageService, S3StorageService>();
-
+            //hub
+            builder.Services.AddSignalR();
             builder.Services.AddHttpContextAccessor();
 
             var app = builder.Build();
@@ -172,7 +174,7 @@ namespace API
             app.UseRateLimiter();
             app.UseFastEndpoints();
             app.MapControllers();
-
+            app.MapHub<NotificationHub>("/hub/notifications");
             app.Run();
         }
     }
