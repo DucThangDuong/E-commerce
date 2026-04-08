@@ -26,21 +26,7 @@ namespace Infrastructure.Repositories
             return brand;
         }
 
-        public async Task<List<ResBrandDto>> GetAllBrandsAsync(int take, CancellationToken ct = default)
-        {
-            return await _context.Brands
-                .AsNoTracking()
-                .OrderBy(e => e.BrandId)
-                .Take(take)
-                .Select(b => new ResBrandDto
-                {
-                    BrandId = b.BrandId,
-                    Description = b.Description,
-                    Name = b.Name,
-                    LogoUrl = b.LogoUrl
-                })
-                .ToListAsync(ct);
-        }
+
 
         public async Task<bool> BrandExistsAsync(int brandId, CancellationToken ct = default)
         {

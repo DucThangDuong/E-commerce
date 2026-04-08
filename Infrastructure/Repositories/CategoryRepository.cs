@@ -26,21 +26,7 @@ namespace Infrastructure.Repositories
             return category;
         }
 
-        public async Task<List<ResCategoryDto>> GetAllCategoriesAsync(int take, CancellationToken ct = default)
-        {
-            return await _context.Categories
-                .AsNoTracking()
-                .OrderBy(e => e.CategoryId)
-                .Take(take)
-                .Select(c => new ResCategoryDto
-                {
-                    CategoryId = c.CategoryId,
-                    Description = c.Description,
-                    Name = c.Name,
-                    Picture = c.Picture
-                })
-                .ToListAsync(ct);
-        }
+
         public async Task<bool> CategoryExistsAsync(int categoryId, CancellationToken ct = default)
         {
             return await _context.Categories.AnyAsync(c => c.CategoryId == categoryId, ct);

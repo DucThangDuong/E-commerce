@@ -3,6 +3,7 @@ using Application.DTOs.Response;
 using Application.Interfaces;
 using Application.IServices;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Products.Queries
 {
@@ -10,12 +11,12 @@ namespace Application.Features.Products.Queries
 
     public class GetFilteredProductsHandler : IRequestHandler<GetFilteredProductsQuery, Result<List<ResProductDto>>>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppReadDbContext _db;
         private readonly ICacheService _cache;
 
-        public GetFilteredProductsHandler(IUnitOfWork unitOfWork, ICacheService cache)
+        public GetFilteredProductsHandler(IAppReadDbContext db, ICacheService cache)
         {
-            _unitOfWork = unitOfWork;
+            _db = db;
             _cache = cache;
         }
 
@@ -30,7 +31,36 @@ namespace Application.Features.Products.Queries
                 {
                     return Result<List<ResProductDto>>.Success(cachedData);
                 }
-                var result = await _unitOfWork.ProductRepository.GetFilteredProductsAsync(query.CategoryIds, query.BrandIds, query.Skip, query.Take, ct);
+
+                var dbQuery = _db.Products.AsNoTracking().AsQueryable();
+
+                if (query.CategoryIds != null && query.CategoryIds.Any())
+                {
+                    dbQuery = dbQuery.Where(p => query.CategoryIds.Contains(p.CategoryId));
+                }
+
+                if (query.BrandIds != null && query.BrandIds.Any())
+                {
+                    dbQuery = dbQuery.Where(p => p.BrandId.HasValue && query.BrandIds.Contains(p.BrandId.Value));
+                }
+
+                var result = await dbQuery
+                    .OrderBy(e => e.ProductId)
+                    .Skip(query.Skip)
+                    .Take(query.Take)
+                    .Select(e => new ResProductDto
+                    {
+                        BasePrice = e.BasePrice,
+                        CategoryId = e.CategoryId,
+                        BrandId = e.BrandId,
+                        Description = e.Description,
+                        Name = e.Name,
+                        ProductId = e.ProductId,
+                        StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
+                        imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                    })
+                    .ToListAsync(ct);
+
                 if (result != null)
                 {
                     await _cache.SetAsync(cacheKey, result, TimeSpan.FromMinutes(10));

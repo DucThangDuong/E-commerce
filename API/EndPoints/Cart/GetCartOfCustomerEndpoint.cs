@@ -22,7 +22,7 @@ namespace API.EndPoints.Cart
             var result = await Mediator.Send(new GetItemCartCustomerQuery(userId), ct);
             if (result.IsSuccess)
             {
-                await Send.ResponseAsync(result.Data, 200);
+                await Send.ResponseAsync(result.Data, result.StatusCode);
                 return;
             }
             await Send.ResponseAsync(null, result.StatusCode);

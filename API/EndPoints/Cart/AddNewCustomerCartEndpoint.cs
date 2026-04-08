@@ -28,7 +28,7 @@ namespace API.EndPoints.Cart
             var result = await Mediator.Send(new AddItemCartCustomerCommand(userId, req.product_id, req.quantity), ct);
             if (result.IsSuccess)
             {
-                await Send.ResponseAsync(null, 201);
+                await Send.ResponseAsync(null, result.StatusCode);
             }
             else
             {

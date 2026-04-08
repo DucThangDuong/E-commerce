@@ -27,31 +27,6 @@ namespace Infrastructure.Repositories
             return await _context.Orders.FirstOrDefaultAsync(e => e.OrderId == orderId);
         }
 
-        public async Task<List<ResOrder>> GetOrdersByCustomerIdAsync(int customerId)
-        {
-            var orders = await _context.Orders
-                .Where(e => e.CustomerId == customerId)
-                .Select(e => new ResOrder
-                {
-                    Address = e.Payment != null ? e.Payment.Address : "",
-                    PhoneNumber = e.Payment != null ? e.Payment.PhoneNumber : null,
-                    OrderId = e.OrderId,
-                    OrderDate = e.OrderDate,
-                    TotalAmount = e.TotalAmount,
-                    Status = e.Status,
-                    PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "Unpaid",
-                    OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
-                    {
-                        name = oi.Product.Name,
-                        quantity = oi.Quantity,
-                        unitPriceAtPurchase = oi.UnitPriceAtPurchase,
-                        basePrice = oi.Product.BasePrice,
-                        imageUrl = oi.Product.ProductImages.Select(pi => pi.ImageUrl).ToList()
-                    }).ToList()
-                })
-                .OrderByDescending(e => e.OrderDate)
-                .ToListAsync();
-            return orders;
-        }
+
     }
 }

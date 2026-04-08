@@ -2,8 +2,8 @@ using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
 using Application.IServices;
-using MassTransit;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -13,12 +13,12 @@ namespace Application.Features.Products.Queries
 
     public class GetDetailProductHandler : IRequestHandler<GetDetailProductQuery, Result<ResProductDto>>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppReadDbContext _db;
         private readonly INotificationService _notificationService;
         private readonly IDatabase _redisConnection;
-        public GetDetailProductHandler(IUnitOfWork unitOfWork, INotificationService notificationService, IConnectionMultiplexer redisConnection)
+        public GetDetailProductHandler(IAppReadDbContext db, INotificationService notificationService, IConnectionMultiplexer redisConnection)
         {
-            _unitOfWork = unitOfWork;
+            _db = db;
             _notificationService = notificationService;
             _redisConnection = redisConnection.GetDatabase();
         }
@@ -44,7 +44,22 @@ namespace Application.Features.Products.Queries
                     }
                 }
 
-                var product = await _unitOfWork.ProductRepository.GetProductDetailAsync(query.ProductId, ct);
+                var product = await _db.Products
+                    .AsNoTracking()
+                    .Where(e => e.ProductId == query.ProductId)
+                    .Select(e => new ResProductDto
+                    {
+                        BasePrice = e.BasePrice,
+                        CategoryId = e.CategoryId,
+                        BrandId = e.BrandId,
+                        Description = e.Description,
+                        Name = e.Name,
+                        ProductId = e.ProductId,
+                        StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
+                        imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                    })
+                    .FirstOrDefaultAsync(ct);
+
                 if (product == null)
                 {
                     return Result<ResProductDto>.Failure("Product not found", 404);

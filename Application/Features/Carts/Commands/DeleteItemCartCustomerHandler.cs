@@ -20,7 +20,7 @@ namespace Application.Features.Carts.Commands
             bool result = await _unitOfWork.CartRepository.DeleteCartAsync(command.CustomerId, command.ProductId);
             if (result)
             {
-                return Result.Success();
+                return Result.Success(204);
             }
             return Result.Failure("Failed to delete cart item.", 500);
         }

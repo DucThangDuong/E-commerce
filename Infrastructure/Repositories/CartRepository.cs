@@ -41,24 +41,6 @@ namespace Infrastructure.Repositories
             return await _context.Carts.FirstOrDefaultAsync(c => c.CustomerId == customerId && c.ProductId == productId);
         }
 
-        public async Task<List<ResCartDto>> GetCartItemsByCustomerIdAsync(int customerId, CancellationToken ct = default)
-        {
-            return await _context.Carts
-                .AsNoTracking()
-                .Where(e => e.CustomerId == customerId)
-                .Select(e => new ResCartDto
-                {
-                    BasePrice = e.Product.BasePrice,
-                    CartId = e.CartId,
-                    CategoryId = e.Product.CategoryId,
-                    Description = e.Product.Description,
-                    Name = e.Product.Name,
-                    ProductId = e.Product.ProductId,
-                    Quantity = e.Quantity,
-                    StockQuantity = e.Product.Inventory != null ? e.Product.Inventory.StockQuantity : 0,
-                    imageUrl = e.Product.ProductImages.Select(pi => pi.ImageUrl).ToList(),
-                })
-                .ToListAsync(ct);
-        }
+
     }
 }

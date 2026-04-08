@@ -3,8 +3,7 @@ using Application.DTOs.Response;
 using Application.Interfaces;
 using Application.IServices;
 using MediatR;
-using Microsoft.Extensions.Caching.Distributed;
-using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Brands.Queries
 {
@@ -12,12 +11,12 @@ namespace Application.Features.Brands.Queries
 
     public class GetAllBrandsHandler : IRequestHandler<GetAllBrandsQuery, Result<List<ResBrandDto>>>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppReadDbContext _db;
         private readonly ICacheService _cache;
         
-        public GetAllBrandsHandler(ICacheService cache, IUnitOfWork unitOfWork)
+        public GetAllBrandsHandler(ICacheService cache, IAppReadDbContext db)
         {
-            _unitOfWork = unitOfWork;
+            _db = db;
             _cache = cache;
         }
 
@@ -29,16 +28,28 @@ namespace Application.Features.Brands.Queries
                 var cachedData = await _cache.GetAsync<List<ResBrandDto>>(cacheKey);
                 if(cachedData != null)
                 {
-                    return Result<List<ResBrandDto>>.Success(cachedData);
+                    return Result<List<ResBrandDto>>.Success(cachedData, 200);
                 }
                 
-                var result = await _unitOfWork.BrandRepository.GetAllBrandsAsync(query.Take, ct);
+                var result = await _db.Brands
+                    .AsNoTracking()
+                    .OrderBy(e => e.BrandId)
+                    .Take(query.Take)
+                    .Select(b => new ResBrandDto
+                    {
+                        BrandId = b.BrandId,
+                        Description = b.Description,
+                        Name = b.Name,
+                        LogoUrl = b.LogoUrl
+                    })
+                    .ToListAsync(ct);
+
                 await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-                return Result<List<ResBrandDto>>.Success(result);
+                return Result<List<ResBrandDto>>.Success(result, 200);
             }
             catch (Exception ex)
             {
-                return Result<List<ResBrandDto>>.Failure(ex.Message, 400);
+                return Result<List<ResBrandDto>>.Failure(ex.Message, 500);
             }
         }
     }

@@ -1,4 +1,4 @@
-﻿using Application.DTOs.Response;
+using Application.DTOs.Response;
 using Domain.Entities;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,6 @@ namespace Application.Interfaces
     public interface IOrderRepository
     {
         public Task AddAsync(Order order);
-        public Task<List<ResOrder>> GetOrdersByCustomerIdAsync(int customerId);
         public Task<Order?> GetByIdAsync(int orderId);
     }
 }

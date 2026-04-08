@@ -55,22 +55,7 @@ namespace Infrastructure.Repositories
             await _context.Customers.AddAsync(customer);
         }
 
-        public async Task<ResCustomerPrivateDto?> GetCustomerProfileAsync(int customerId, CancellationToken ct = default)
-        {
-            return await _context.Customers
-                .AsNoTracking()
-                .Where(x => x.CustomerId == customerId)
-                .Select(x => new ResCustomerPrivateDto
-                {
-                    avatarUrl = x.CustomAvatar,
-                    email = x.Email,
-                    id = x.CustomerId,
-                    name = x.Name,
-                    address = x.Address,
-                    phoneNumber = x.PhoneNumber,
-                })
-                .FirstOrDefaultAsync(ct);
-        }
+
 
         public async Task<int> UpdateCustomerProfileAsync(int customerId, string name, string? phoneNumber, string? address, CancellationToken ct = default)
         {

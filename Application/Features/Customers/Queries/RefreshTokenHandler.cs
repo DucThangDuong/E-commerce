@@ -1,6 +1,5 @@
 using Application.Common;
 using Application.DTOs.Response;
-using Application.Interfaces;
 using Application.IServices;
 using MediatR;
 using StackExchange.Redis;
@@ -15,17 +14,16 @@ namespace Application.Features.Customers.Queries
         private readonly IJWTTokenServices _jwtTokenService;
         private readonly IDatabase _redisConnection;
 
-        public RefreshTokenHandler(IUnitOfWork unitOfWork, IJWTTokenServices jwtTokenService , IConnectionMultiplexer multiplexer)
+        public RefreshTokenHandler(IJWTTokenServices jwtTokenService, IConnectionMultiplexer multiplexer)
         {
             _jwtTokenService = jwtTokenService;
-            _redisConnection=multiplexer.GetDatabase();
+            _redisConnection = multiplexer.GetDatabase();
         }
 
         public async Task<Result<LoginResponse>> Handle(RefreshTokenCommand command, CancellationToken ct)
         {
             try
             {
-
 
                 if (string.IsNullOrEmpty(command.RefreshToken))
                 {
@@ -56,7 +54,7 @@ namespace Application.Features.Customers.Queries
                     RefreshTokenExpiryTime = newRefreshToken.ExpiryDate
                 });
             }
-            catch 
+            catch
             {
                 return Result<LoginResponse>.Failure("Loi server", 500);
             }

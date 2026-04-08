@@ -2,6 +2,7 @@ using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Products.Queries
 {
@@ -9,18 +10,34 @@ namespace Application.Features.Products.Queries
 
     public class GetAllProductHandler : IRequestHandler<GetAllProductQuery, Result<List<ResProductDto>>>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppReadDbContext _db;
 
-        public GetAllProductHandler(IUnitOfWork unitOfWork)
+        public GetAllProductHandler(IAppReadDbContext db)
         {
-            _unitOfWork = unitOfWork;
+            _db = db;
         }
 
         public async Task<Result<List<ResProductDto>>> Handle(GetAllProductQuery query, CancellationToken ct)
         {
             try
             {
-                var products = await _unitOfWork.ProductRepository.GetAllProductsAsync(query.Skip, query.Take, ct);
+                var products = await _db.Products
+                    .AsNoTracking()
+                    .OrderBy(e => e.ProductId)
+                    .Skip(query.Skip)
+                    .Take(query.Take)
+                    .Select(e => new ResProductDto
+                    {
+                        BasePrice = e.BasePrice,
+                        CategoryId = e.CategoryId,
+                        BrandId = e.BrandId,
+                        Description = e.Description,
+                        Name = e.Name,
+                        ProductId = e.ProductId,
+                        StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
+                        imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                    })
+                    .ToListAsync(ct);
                 return Result<List<ResProductDto>>.Success(products);
             }
             catch (Exception ex)

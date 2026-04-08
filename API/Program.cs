@@ -163,6 +163,7 @@ namespace API
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IInventoryRepository,InventoryRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+            builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceOrderSystemContext>());
 
             // Storage (MinIO / S3)
             var storageConfig = builder.Configuration.GetSection("Storage");

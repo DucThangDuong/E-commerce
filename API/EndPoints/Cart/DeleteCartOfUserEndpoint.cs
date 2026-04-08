@@ -24,10 +24,12 @@ namespace API.EndPoints.Cart
             var result = await Mediator.Send(new DeleteItemCartCustomerCommand(userId, req.productId), ct);
             if (result.IsSuccess)
             {
-                await Send.NoContentAsync();
-                return;
+                await Send.ResponseAsync(null, result.StatusCode);
             }
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            else
+            {
+                await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            }
         }
     }
 }
