@@ -1,4 +1,4 @@
-﻿name: .NET Core CI
+name: .NET Core CI
 
 on:
   push:
@@ -7,22 +7,107 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build_and_test: 
-    runs-on: ubuntu-latest 
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+          - 1433:1433
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Your_Password123!"
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Your_Password123!' -C -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Your_Password123!' -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+      minio:
+        image: bitnami/minio:latest
+        ports:
+          - 9000:9000
+          - 9001:9001
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_DEFAULT_BUCKETS: product-storage
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ConnectionStrings__Ecommerce: ${{ secrets.ConnectionStrings }}
+      RedisCache: "localhost:6379"
+      RabbitMQ__HostName: "localhost"
+      RabbitMQ__UserName: "guest"
+      RabbitMQ__Password: "guest"
+      RabbitMQ__Port: "5672"
+      SecretKey: ${{ secrets.SecretKey }}
+      Authentication__Google__ClientId: ${{ secrets.ClientId }}
+      Authentication__Google__ClientSecret: ${{ secrets.ClientSecret }}
+      Storage__ServiceUrl: "http://localhost:9000"
+      Storage__AccessKey: "minioadmin"
+      Storage__SecretKey: "minioadmin"
+      Storage__product_storage: "product-storage"
+      MailSettings__UserName: ${{ secrets.UserName }}
+      MailSettings__Password: ${{ secrets.Password }}
+      VnPayConfig__TmnCode: ${{ secrets.TmnCode }}
+      VnPayConfig__HashSecret: ${{ secrets.HashSecret }}
+      VnPayConfig__BaseUrl: ${{ secrets.BaseUrl }}
+      VnPayConfig__ReturnUrl: ${{ secrets.ReturnUrl }}
+      VnPayConfig__Version: ${{ secrets.Version }}
+
     steps:
-    - name: Tải source code về máy ảo
-      uses: actions/checkout@v4
+      - name: Tải source code về máy ảo
+        uses: actions/checkout@v4
 
-    - name: Cài đặt .NET SDK 
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x' 
+      - name: Cài đặt .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
-    - name: Tiến hành Build project
-      run: dotnet build --no-restore --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore API/API.csproj
 
-    # - name: Chạy Unit Test 
-    #   run: dotnet test --no-build --verbosity normal
+      - name: Tiến hành Build project
+        run: dotnet build API/API.csproj --no-restore --configuration Release
+
+      # - name: Chạy Unit Test
+      #   run: dotnet test --no-build --configuration Release --verbosity normal

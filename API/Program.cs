@@ -42,7 +42,13 @@ namespace API
             builder.Services.AddFastEndpoints();
             builder.Services.AddDbContext<EcommerceOrderSystemContext>(options =>
             {
-                options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"]);
+                options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"], sqlOptions =>
+                {
+                    sqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null);
+                });
             });
 
             // ──────────── MediatR (auto-scan all handlers) ────────────
