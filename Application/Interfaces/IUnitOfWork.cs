@@ -9,6 +9,7 @@ namespace Application.Interfaces
         IProductRepository ProductRepository { get; }
         IOrderRepository OrderRepository { get; }
         IInventoryRepository InventoryRepository { get; }
+        IPaymentRepository PaymentRepository { get; }
         Task SaveChangesAsync(CancellationToken ct = default);
     }
 }

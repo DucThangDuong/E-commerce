@@ -13,6 +13,7 @@ namespace Infrastructure.Repositories
         public IProductRepository ProductRepository { get; }
         public IOrderRepository OrderRepository { get; }
         public IInventoryRepository InventoryRepository { get; }
+        public IPaymentRepository PaymentRepository { get; }
 
         public UnitOfWork(
             EcommerceOrderSystemContext context,
@@ -22,7 +23,8 @@ namespace Infrastructure.Repositories
             IBrandRepository brandRepository,
             IProductRepository productRepository,
             IOrderRepository orderRepository,
-            IInventoryRepository inventoryRepository)
+            IInventoryRepository inventoryRepository,
+            IPaymentRepository paymentRepository)
         {
             _context = context;
             CustomerRepository = customerRepository;
@@ -32,6 +34,7 @@ namespace Infrastructure.Repositories
             ProductRepository = productRepository;
             OrderRepository = orderRepository;
             InventoryRepository = inventoryRepository;
+            PaymentRepository = paymentRepository;
 
         }
 

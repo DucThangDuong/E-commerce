@@ -10,6 +10,6 @@ namespace Application.Interfaces
     {
         public Task<int> GetStockQuantity(int productId);
         Task<Dictionary<int, int>> GetStockByProductIdsAsync(List<int> productIds, CancellationToken ct = default);
-        Task<Dictionary<int, int>> UpdateStockAsync(Dictionary<int, int> purchasedItems, CancellationToken ct = default);
+        Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int> purchasedItems, CancellationToken ct = default);
     }
 }

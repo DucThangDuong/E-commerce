@@ -1,7 +1,7 @@
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using Application.DTOs.Services;
-using Application.Interfaces;
+using Application.IServices;
 
 namespace Application.Consumers;
 

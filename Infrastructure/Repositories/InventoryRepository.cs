@@ -30,7 +30,7 @@ namespace Infrastructure.Repositories
                 .ToDictionaryAsync(i => i.ProductId, i => i.StockQuantity, ct);
         }
 
-        public async Task<Dictionary<int, int>> UpdateStockAsync(Dictionary<int, int> purchasedItems, CancellationToken ct = default)
+        public async Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int> purchasedItems, CancellationToken ct = default)
         {
             var productIds = purchasedItems.Keys.ToList();
             var inventories = await _context.Inventories
@@ -42,10 +42,9 @@ namespace Infrastructure.Repositories
                 if (purchasedItems.TryGetValue(inventory.ProductId, out int purchasedQuantity))
                 {
                     inventory.StockQuantity -= purchasedQuantity;
-                    updatedStock[inventory.ProductId] = inventory.StockQuantity;
                 }
             }
-            return updatedStock;
+            return true;
         }
     }
 }

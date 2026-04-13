@@ -217,6 +217,7 @@ namespace API
             builder.Services.AddScoped<IProductRepository, ProductRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IInventoryRepository,InventoryRepository>();
+            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceOrderSystemContext>());
 

@@ -16,8 +16,7 @@ namespace API.EndPoints.Order
         public override void Configure()
         {
             Get("/order/payment-callback");
-            AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
-            Options(x => x.RequireRateLimiting("create_payment"));
+            AllowAnonymous();
         }
 
         public override async Task HandleAsync(CancellationToken ct)

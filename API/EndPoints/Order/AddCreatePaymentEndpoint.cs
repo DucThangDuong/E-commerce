@@ -22,7 +22,7 @@ namespace API.EndPoints.Order
         public override async Task HandleAsync(ReqOrderInfo req, CancellationToken ct)
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
-            var result = await _mediator.Send(new CreatePaymentCommand(req.OrderId, (decimal)req.Amount, ipAddress), ct);
+            var result = await _mediator.Send(new CreatePaymentCommand(req.OrderId, (decimal)req.Amount, ipAddress,req.TypePayment,req.Address,req.PhoneNumber), ct);
             if (result.IsSuccess)
             {
                 await Send.ResponseAsync(result.Data, 200, ct);
