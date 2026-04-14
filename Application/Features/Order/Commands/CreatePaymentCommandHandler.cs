@@ -32,6 +32,12 @@ namespace Application.Features.Order.Commands
         {
             try
             {
+                var reservationValue = await _redisConnection.StringGetAsync($"Order:Reservation:{request.OrderId}");
+                if(!reservationValue.HasValue)
+                {
+                    return Result<string>.Failure("No reservation found for this order.", 404);
+                }
+                var reservedItems = JsonSerializer.Deserialize<Dictionary<int, int>>(reservationValue!);
                 if (request.TypePayment == 0)
                 {
                     Payment newPayment = new Payment
@@ -44,8 +50,6 @@ namespace Application.Features.Order.Commands
                         PhoneNumber = request.PhoneNumber
                     };
                     await _unitOfWork.PaymentRepository.AddAsync(newPayment);
-                    var reservationValue = await _redisConnection.StringGetAsync($"Order:Reservation:{request.OrderId}");
-                    var reservedItems = reservationValue.HasValue ? JsonSerializer.Deserialize<Dictionary<int, int>>(reservationValue) : null;
                     await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(reservedItems);
                     await _unitOfWork.SaveChangesAsync();
                     await _redisConnection.KeyDeleteAsync($"Order:Reservation:{request.OrderId}");

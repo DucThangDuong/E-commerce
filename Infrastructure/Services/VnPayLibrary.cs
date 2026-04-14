@@ -34,8 +34,8 @@ namespace Infrastructure.Services
 
         public string GetResponseData(string key)
         {
-            string retValue;
-            if (_responseData.TryGetValue(key, out retValue))
+            string? retValue;
+            if (_responseData.TryGetValue(key,  out  retValue))
             {
                 return retValue;
             }
@@ -78,7 +78,7 @@ namespace Infrastructure.Services
 
         #region Response process
 
-        public bool ValidateSignature(string inputHash, string secretKey)
+        public bool ValidateSignature(string? inputHash, string secretKey)
         {
             string rspRaw = GetResponseData();
             string myChecksum = Utils.HmacSHA512(secretKey, rspRaw);
@@ -139,23 +139,23 @@ namespace Infrastructure.Services
             string ipAddress = string.Empty;
             try
             {
-                ipAddress = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+                ipAddress = context.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? string.Empty;
 
                 if (string.IsNullOrEmpty(ipAddress) || (ipAddress.ToLower() == "unknown") || ipAddress.Length > 45)
-                    ipAddress = context.Connection.RemoteIpAddress?.ToString();
+                    ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             }
             catch (Exception ex)
             {
                 ipAddress = "Invalid IP:" + ex.Message;
             }
 
-            return ipAddress ?? "127.0.0.1";
+            return ipAddress;
         }
     }
 
     public class VnPayCompare : IComparer<string>
     {
-        public int Compare(string x, string y)
+        public int Compare(string? x, string? y)
         {
             if (x == y) return 0;
             if (x == null) return -1;
