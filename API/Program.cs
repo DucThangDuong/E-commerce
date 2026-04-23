@@ -258,6 +258,12 @@ namespace API
                 });
             });
 
+            // ──────────── Security Headers ────────────
+            app.UseMiddleware<SecurityHeadersMiddleware>();
+
+            // ──────────── XSS Sanitization ────────────
+            app.UseMiddleware<XssSanitizationMiddleware>();
+
             app.UseRouting();
             app.UseCors("CORS");
             app.UseHttpsRedirection();

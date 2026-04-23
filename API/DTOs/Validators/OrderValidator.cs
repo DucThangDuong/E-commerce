@@ -8,12 +8,6 @@ public class OrderValidator : Validator<ReqAddNewOrder>
 {
     public OrderValidator()
     {
-        //RuleFor(x => x.Address)
-        //    .NotEmpty().WithMessage("Địa chỉ không được để trống hoặc rỗng.");
-
-        //RuleFor(x => x.PhoneNumber)
-        //    .NotEmpty().WithMessage("Số điện thoại không được để trống hoặc rỗng.");
-
         RuleFor(x => x.Items)
             .NotNull().WithMessage("Danh sách sản phẩm không được null.")
             .NotEmpty().WithMessage("Danh sách sản phẩm phải có ít nhất 1 sản phẩm.");
