@@ -1,3 +1,4 @@
+using API.Extensions;
 using Application.Features.Products.Commands;
 using FastEndpoints;
 using MediatR;
@@ -29,14 +30,7 @@ namespace API.EndPoints.Product
             var result = await Mediator.Send(new AddFeaturedProductCommand(
                 req.ProductId, req.DisplayOrder, req.StartDate, req.EndDate), ct);
                 
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(null, 201, ct);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
-            }
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

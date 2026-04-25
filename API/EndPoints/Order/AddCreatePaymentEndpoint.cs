@@ -4,6 +4,8 @@ using FastEndpoints;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
+using API.Extensions;
+
 namespace API.EndPoints.Order
 {
     public class AddCreatePaymentEndpoint : Endpoint<ReqOrderInfo>
@@ -23,14 +25,9 @@ namespace API.EndPoints.Order
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
             var result = await _mediator.Send(new CreatePaymentCommand(req.OrderId, (decimal)req.Amount, ipAddress,req.TypePayment,req.Address,req.PhoneNumber), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(result.Data, 200, ct);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { message = result.Error }, statusCode: result.StatusCode, ct);
-            }
+            await this.SendApiResponseAsync(result, ct, 
+                Message: "Tạo yêu cầu thanh toán thành công", 
+                defaultErrorCode: "ERR_PAYMENT_FAILED");
         }
     }
 }

@@ -41,7 +41,7 @@ namespace Application.Features.Products.Commands
 
                 await _unitOfWork.ProductRepository.AddFeaturedProductAsync(featuredProduct, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
-                return Result.Success();
+                return Result.Success(201);
             }
             catch (Exception ex)
             {

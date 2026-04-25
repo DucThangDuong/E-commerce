@@ -72,7 +72,7 @@ namespace Application.Features.Products.Commands
 
                 await _unitOfWork.ProductRepository.AddAsync(newProduct);
                 await _unitOfWork.SaveChangesAsync(ct);
-                return Result.Success();
+                return Result.Success(201);
             }
             catch (Exception ex)
             {

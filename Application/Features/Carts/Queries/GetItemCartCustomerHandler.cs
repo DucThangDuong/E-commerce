@@ -37,7 +37,7 @@ namespace Application.Features.Carts.Queries
                         imageUrl = e.Product.ProductImages.Select(pi => pi.ImageUrl).ToList(),
                     })
                     .ToListAsync(ct);
-                return Result<List<ResCartDto>>.Success(result);
+                return Result<List<ResCartDto>>.Success(result,200);
             }
             catch (Exception ex)
             {

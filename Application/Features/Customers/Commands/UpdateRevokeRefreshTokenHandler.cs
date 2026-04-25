@@ -23,7 +23,7 @@ namespace Application.Features.Customers.Commands
                 {
                     await _redisConnection.StringSetAsync($"Blacklist:{request.accessToken}", "banned", TimeSpan.FromMinutes(15));
                 }
-                return Result.Success();
+                return Result.Success(204);
             }
             catch (Exception ex)
             {

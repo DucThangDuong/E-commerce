@@ -21,7 +21,7 @@ namespace Application.Features.Categories.Commands
             if (value != null)
             {
                 await _unitOfWork.SaveChangesAsync(ct);
-                return Result.Success();
+                return Result.Success(201);
             }
             else
             {

@@ -38,7 +38,7 @@ namespace Application.Features.Products.Queries
                         imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
                     })
                     .ToListAsync(ct);
-                return Result<List<ResProductDto>>.Success(products);
+                return Result<List<ResProductDto>>.Success(products,200);
             }
             catch (Exception ex)
             {

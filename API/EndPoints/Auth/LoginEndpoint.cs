@@ -33,11 +33,22 @@ public class LoginEndpoint : Endpoint<ReqLoginDTo>
                     IsEssential = true
                 });
             }
-            await Send.ResponseAsync(result.Data?.AccessToken, result.StatusCode, ct);
+            var response = new ApiSuccessResponse<string>
+            {
+                Data = result.Data?.AccessToken ?? "",
+                Message = "Login successful",
+            };
+            await Send.ResponseAsync(response, result.StatusCode, ct);
         }
         else
         {
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            var response = new ApiErrorResponse
+            {
+                Message = "Login failed",
+                ErrorCode = "lOGIN_FAIL",
+                Errors = result.Errors
+            };
+            await Send.ResponseAsync(response, result.StatusCode, ct);
         }
     }
 }

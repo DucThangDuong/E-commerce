@@ -60,7 +60,7 @@ namespace Application.Features.Order.Commands
                     var paymentUrl = _vnPayService.CreatePaymentUrl(request.OrderId, request.Amount, request.IpAddress);
                     await _redisConnection.KeyDeleteAsync($"Order:Reservation:{request.OrderId}");
                     
-                    return Result<string>.Success(paymentUrl);
+                    return Result<string>.Success(paymentUrl,201);
                 }
             }
             catch (Exception ex)

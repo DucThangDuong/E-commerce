@@ -24,7 +24,7 @@ namespace API.EndPoints.Brand
                 await Send.ResponseAsync(null, 201, ct);
                 return;
             }
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            await Send.ResponseAsync(new { message = result.Errors }, result.StatusCode, ct);
         }
     }
 }

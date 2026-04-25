@@ -33,11 +33,11 @@ namespace Application.Features.Customers.Commands
                     return Result.Failure("Email đã tồn tại", 400);
                 }
                 await _unitOfWork.CustomerRepository.AddAsync(command.Email, command.Password, command.Name);
-                var orderEvent = new Application.DTOs.Services.SendMail(command.Email, "Chào mừng bạn đến với Food Delivery App!",
+                var orderEvent = new SendMail(command.Email, "Chào mừng bạn đến với Food Delivery App!",
                     $"Xin chào {command.Name}!\nCảm ơn bạn đã đăng ký tài khoản tại Food Delivery App. Chúng tôi rất vui được phục vụ bạn!");
                 await _publishEndpoint.Publish(orderEvent, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
-                return Result.Success();
+                return Result.Success(201);
             }
             catch (Exception ex)
             {

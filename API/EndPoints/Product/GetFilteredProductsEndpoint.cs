@@ -1,3 +1,4 @@
+using API.Extensions;
 using Application.Features.Products.Queries;
 using FastEndpoints;
 using MediatR;
@@ -26,14 +27,7 @@ namespace API.EndPoints.Product
         public override async Task HandleAsync(ReqGetFilteredProductsDto req, CancellationToken ct)
         {
             var result = await Mediator.Send(new GetFilteredProductsQuery(req.CategoryIds, req.BrandIds, req.skip, req.take), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(result.Data!, 200, ct);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
-            }
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

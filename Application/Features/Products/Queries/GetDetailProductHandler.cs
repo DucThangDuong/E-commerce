@@ -70,7 +70,7 @@ namespace Application.Features.Products.Queries
                 }
                 await _redisConnection.StringSetAsync(cacheKeyInfo, JsonSerializer.Serialize(product), TimeSpan.FromMinutes(10));
                 await _redisConnection.StringSetAsync(cacheKeyStock, product.StockQuantity.ToString(), TimeSpan.FromMinutes(10));
-                return Result<ResProductDto>.Success(product);
+                return Result<ResProductDto>.Success(product,200);
             }
             catch (Exception ex)
             {

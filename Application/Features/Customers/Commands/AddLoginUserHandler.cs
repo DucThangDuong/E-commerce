@@ -56,7 +56,7 @@ namespace Application.Features.Customers.Commands
                     AccessToken = accessToken,
                     RefreshToken = refreshToken.Token,
                     RefreshTokenExpiryTime = refreshToken.ExpiryDate,
-                });
+                },200);
             }
             catch (Exception ex)
             {

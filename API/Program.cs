@@ -254,7 +254,13 @@ namespace API
                 {
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new { message = "An unexpected error occurred. Please try again later." });
+                    var response = new API.DTOs.ApiErrorResponse
+                    {
+                        Message = "Hệ thống đang gặp sự cố, vui lòng thử lại sau.",
+                        ErrorCode = "ERR_INTERNAL_SERVER",
+                        TraceId = context.TraceIdentifier
+                    };
+                    await context.Response.WriteAsJsonAsync(response);
                 });
             });
 
@@ -271,7 +277,24 @@ namespace API
             app.UseMiddleware<AccessTokenBlacklistMiddleware>();
             app.UseAuthorization();
             app.UseRateLimiter();
-            app.UseFastEndpoints();
+            
+            app.UseFastEndpoints(c => 
+            {
+                c.Errors.ResponseBuilder = (failures, ctx, statusCode) =>
+                {
+                    return new API.DTOs.ApiErrorResponse
+                    {
+                        Message = "Dữ liệu đầu vào không hợp lệ.",
+                        ErrorCode = "ERR_VALIDATION_FAILED",
+                        Errors = failures.Select(f => new 
+                        {
+                            field = f.PropertyName,
+                            message = f.ErrorMessage
+                        }),
+                        TraceId = ctx.TraceIdentifier
+                    };
+                };
+            });
             app.MapControllers();
             app.MapHub<NotificationHub>("/notifications");
             app.Run();

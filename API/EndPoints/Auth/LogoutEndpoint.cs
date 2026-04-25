@@ -1,4 +1,5 @@
-﻿using API.Extendsion;
+using API.DTOs;
+using API.Extensions;
 using Application.Features.Customers.Commands;
 using FastEndpoints;
 using MediatR;
@@ -19,7 +20,7 @@ public class LogoutEndpoint : EndpointWithoutRequest
     {
         int userId = HttpContext.User.GetUserId();
         string? accessToken = HttpContext.Request.Headers["Authorization"].FirstOrDefault();
-        var result = await Mediator.Send(new UpdateRevokeRefreshTokenCommand(userId,accessToken));
+        var result = await Mediator.Send(new UpdateRevokeRefreshTokenCommand(userId, accessToken));
         if (result.IsSuccess)
         {
             HttpContext.Response.Cookies.Delete("refreshToken", new CookieOptions
@@ -30,10 +31,8 @@ public class LogoutEndpoint : EndpointWithoutRequest
                 Expires = DateTimeOffset.UtcNow.AddDays(-1),
                 IsEssential = true
             });
-            await Send.NoContentAsync();
-            return;
         }
-        await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+        await this.SendApiResponseAsync(result,ct);
     }
 }
 

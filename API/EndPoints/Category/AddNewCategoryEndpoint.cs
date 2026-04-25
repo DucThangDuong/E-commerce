@@ -1,4 +1,5 @@
 using API.DTOs;
+using API.Extensions;
 using Application.Features.Categories.Commands;
 using FastEndpoints;
 using MediatR;
@@ -20,12 +21,7 @@ namespace API.EndPoints.Category
         public override async Task HandleAsync(ReqCreateCategoryDto req, CancellationToken ct)
         {
             var result = await Mediator.Send(new AddNewCategoryCommand(req.Name, req.Description, req.Picture), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(null, 201, ct);
-                return;
-            }
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

@@ -37,7 +37,7 @@ public class RefreshTokenEndpoint : EndpointWithoutRequest
         }
         else
         {
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            await Send.ResponseAsync(new { message = result.Errors }, result.StatusCode, ct);
         }
     }
 }

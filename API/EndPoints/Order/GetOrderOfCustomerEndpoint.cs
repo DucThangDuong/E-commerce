@@ -1,4 +1,4 @@
-using API.Extendsion;
+using API.Extensions;
 using Application.Features.Order.Queries;
 using FastEndpoints;
 using MediatR;
@@ -26,15 +26,8 @@ namespace API.EndPoints.Order
             int customerId = HttpContext.User.GetUserId();
             
             var result = await Mediator.Send(new GetOrderOfCustomerQuery(customerId), ct);
-            
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(result.Data, cancellation: ct);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { error = result.Error }, result.StatusCode, cancellation: ct);
-            }
+
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

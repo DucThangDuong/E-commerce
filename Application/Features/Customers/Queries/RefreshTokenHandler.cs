@@ -52,7 +52,7 @@ namespace Application.Features.Customers.Queries
                     AccessToken = newAccessToken,
                     RefreshToken = newRefreshToken.Token,
                     RefreshTokenExpiryTime = newRefreshToken.ExpiryDate
-                });
+                },201);
             }
             catch
             {

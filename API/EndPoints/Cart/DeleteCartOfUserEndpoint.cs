@@ -1,4 +1,4 @@
-using API.Extendsion;
+using API.Extensions;
 using Application.Features.Carts.Commands;
 using FastEndpoints;
 using MediatR;
@@ -23,14 +23,7 @@ namespace API.EndPoints.Cart
         {
             var userId = HttpContext.User.GetUserId();
             var result = await Mediator.Send(new DeleteItemCartCustomerCommand(userId, req.productId), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(null, result.StatusCode);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
-            }
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

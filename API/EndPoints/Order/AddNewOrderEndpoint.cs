@@ -1,9 +1,10 @@
 using API.DTOs;
-using API.Extendsion;
 using Application.Features.Order.Commands;
 using FastEndpoints;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using API.Extensions;
+using Application.Common;
 
 namespace API.EndPoints.Order
 {
@@ -36,21 +37,8 @@ namespace API.EndPoints.Order
                 }
             }
             var result = await Mediator.Send(new AddOrderItemCustomerCommand(userId, items), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(new { orderId = result.Data?[0] ?? null }, result.StatusCode, ct);
-            }
-            else
-            {
-                if (result.Data != null)
-                {
-                    await Send.ResponseAsync(new { outOfStockItems = result.Data }, result.StatusCode, ct);
-                }
-                else
-                {
-                    await Send.ResponseAsync(result.Error, result.StatusCode, ct);
-                }
-            }
+
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

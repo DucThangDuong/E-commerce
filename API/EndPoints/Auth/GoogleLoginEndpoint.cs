@@ -1,4 +1,5 @@
 using API.DTOs;
+using Application.DTOs.Response;
 using Application.Features.Customers.Commands;
 using FastEndpoints;
 using MediatR;
@@ -32,11 +33,22 @@ public class GoogleLoginEndpoint : Endpoint<ReqGoogleLoginDTO>
                     IsEssential = true
                 });
             }
-            await Send.ResponseAsync(result.Data!, result.StatusCode, ct);
+            var response = new ApiSuccessResponse<string>
+            {
+                Data = result.Data?.AccessToken ?? "",
+                Message = "Login successful",
+            };
+            await Send.ResponseAsync(response, result.StatusCode, ct);
         }
         else
         {
-            await Send.ResponseAsync(new { message = result.Error }, result.StatusCode, ct);
+            var response = new ApiErrorResponse
+            {
+                Message = "Login failed",
+                ErrorCode = "lOGIN_FAIL",
+                Errors = result.Errors
+            };
+            await Send.ResponseAsync(response, result.StatusCode, ct);
         }
     }
 }

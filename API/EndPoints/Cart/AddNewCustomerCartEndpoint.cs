@@ -1,5 +1,5 @@
 using API.DTOs;
-using API.Extendsion;
+using API.Extensions;
 using Application.Features.Carts.Commands;
 using FastEndpoints;
 using MediatR;
@@ -27,14 +27,7 @@ namespace API.EndPoints.Cart
                 return;
             }
             var result = await Mediator.Send(new AddItemCartCustomerCommand(userId, req.product_id, req.quantity), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(null, result.StatusCode);
-            }
-            else
-            {
-                await Send.ResponseAsync(new { message = result.Error }, statusCode: result.StatusCode, ct);
-            }
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }

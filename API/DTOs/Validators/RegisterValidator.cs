@@ -10,7 +10,7 @@ public class RegisterValidator : Validator<ReqRegisterDto>
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email không được để trống")
             .EmailAddress().WithMessage("Email không đúng định dạng")
-            .MaximumLength(255).WithMessage("Email không được vượt quá 255 ký tự")
+            .MaximumLength(255).WithMessage("Email không được vượt quá 255 ký tự");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Mật khẩu không được để trống")

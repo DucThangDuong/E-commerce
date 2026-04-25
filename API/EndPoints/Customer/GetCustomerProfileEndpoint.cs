@@ -1,4 +1,4 @@
-using API.Extendsion;
+using API.Extensions;
 using Application.Features.Customers.Queries;
 using FastEndpoints;
 using MediatR;
@@ -20,12 +20,7 @@ namespace API.EndPoints.Customer
         {
             int userId = HttpContext.User.GetUserId();
             var result = await Mediator.Send(new GetCustomerProfileQuery(userId), ct);
-            if (result.IsSuccess)
-            {
-                await Send.ResponseAsync(result.Data);
-                return;
-            }
-            await Send.ResponseAsync(null, result.StatusCode);
+            await this.SendApiResponseAsync(result, ct);
         }
     }
 }
