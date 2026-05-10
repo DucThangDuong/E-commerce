@@ -23,13 +23,14 @@ namespace Application.Features.Order.Queries
                 .Where(e => e.CustomerId == request.CustomerId)
                 .Select(e => new ResOrder
                 {
-                    Address = e.Payment != null ? e.Payment.Address : "",
-                    PhoneNumber = e.Payment != null ? e.Payment.PhoneNumber : null,
+                    Address = e.OrderShippingDetail != null ? e.OrderShippingDetail.StreetAddress : "",
+                    PhoneNumber = e.OrderShippingDetail != null ? e.OrderShippingDetail.RecipientPhone : null,
                     OrderId = e.OrderId,
-                    OrderDate = e.OrderDate,
+                    OrderDate = e.CreatedAt,
                     TotalAmount = e.TotalAmount,
                     Status = e.Status,
-                    PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "Unpaid",
+                    PaymentStatus = e.Payments != null && e.Payments.Any(ff => ff.OrderId == e.OrderId)
+                        ? e.Payments.FirstOrDefault(ff => ff.OrderId == e.OrderId)!.PaymentStatus : "",
                     OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
                     {
                         name = oi.Product.Name,

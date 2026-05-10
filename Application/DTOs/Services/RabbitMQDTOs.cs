@@ -7,5 +7,5 @@ using System.Threading.Tasks;
 namespace Application.DTOs.Services
 {
     public record SendMail(string email, string subject, string htmlMessage);
-    public record ReserveOrderEvent(int OrderId);
+    public record ReserveOrderEvent(string ReservationId);
 }

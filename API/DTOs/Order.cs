@@ -1,4 +1,4 @@
-﻿namespace API.DTOs
+namespace API.DTOs
 {
     public class ReqAddNewOrder
     {
@@ -11,7 +11,7 @@
     }
     public class ReqOrderInfo
     {
-        public int OrderId { get; set; }
+        public string ReservationId { get; set; } = null!;
         public double Amount { get; set; }
         public string OrderDescription { get; set; } = null!;
         public string FullName { get; set; } = null!;

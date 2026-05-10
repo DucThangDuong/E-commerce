@@ -78,9 +78,11 @@ CREATE TABLE Inventory (
 CREATE TABLE Orders (
     order_id INT IDENTITY(1,1) PRIMARY KEY,
     customer_id INT NOT NULL,
-    order_date DATETIME DEFAULT GETDATE(),
+    createdAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    updatedAt DATETIME2 NULL,
     total_amount DECIMAL(18, 2) NOT NULL,
-    status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    Status INT NOT NULL DEFAULT 0,
+    PaymentStatus INT NOT NULL DEFAULT 0,
     FOREIGN KEY (customer_id) REFERENCES Customers(customer_id)
 );
 
@@ -92,9 +94,18 @@ CREATE TABLE OrderItems (
     product_id INT NOT NULL,
     quantity INT NOT NULL CHECK (quantity > 0),
     unit_price_at_purchase DECIMAL(18, 2) NOT NULL,
-    PRIMARY KEY (order_id, product_id), -- Khóa chính kết hợp (Composite Key)
+    PRIMARY KEY (order_id, product_id), 
     FOREIGN KEY (order_id) REFERENCES Orders(order_id),
     FOREIGN KEY (product_id) REFERENCES Products(product_id)
+);
+
+CREATE TABLE OrderShippingDetails (
+    order_id INT PRIMARY KEY, 
+    recipient_name NVARCHAR(100) NOT NULL,
+    recipient_phone VARCHAR(20) NOT NULL,
+    street_address NVARCHAR(255) NOT NULL,
+    customer_note NVARCHAR(500) NULL,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id) 
 );
 
 -- ==========================================
@@ -102,14 +113,14 @@ CREATE TABLE OrderItems (
 -- ==========================================
 CREATE TABLE Payments (
     payment_id INT IDENTITY(1,1) PRIMARY KEY,
-    order_id INT NOT NULL UNIQUE, -- UNIQUE để đảm bảo quan hệ 1-1 với Order
+    order_id INT NOT NULL ,
     amount DECIMAL(18, 2) NOT NULL,
     provider VARCHAR(50) NOT NULL, -- VNPay, MoMo, Stripe, COD...
-    payment_status VARCHAR(50) NOT NULL DEFAULT 'Unpaid', 
-    phone_number VARCHAR(20),
-    address NVARCHAR(500),
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'PENDING', 
+    provider_transaction_id varchar(50), -- mã giao dịch do cổng thanh toán trả về
+    idempotency_key Varchar(50), -- khóa để chống duplicate
     FOREIGN KEY (order_id) REFERENCES Orders(order_id)
-);
+); 
 
 -- ==========================================
 -- 8. Bảng Giỏ hàng (Cart)

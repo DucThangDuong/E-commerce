@@ -7,8 +7,8 @@ public class OrderInfoValidator : Validator<ReqOrderInfo>
 {
     public OrderInfoValidator()
     {
-        RuleFor(x => x.OrderId)
-            .GreaterThan(0).WithMessage("OrderId phải lớn hơn 0");
+        RuleFor(x => x.ReservationId)
+            .NotEmpty().WithMessage("ReservationId không được để trống");
 
         RuleFor(x => x.Amount)
             .GreaterThan(0).WithMessage("Amount phải lớn hơn 0");
@@ -26,6 +26,7 @@ public class OrderInfoValidator : Validator<ReqOrderInfo>
 
         RuleFor(x => x.PhoneNumber)
             .NotEmpty().WithMessage("Số điện thoại không được để trống")
+            .MinimumLength(10).WithMessage("Số điện thoại không được ít hơn 10")
             .MaximumLength(10).WithMessage("Số điện thoại không được vượt quá 10 ký tự")
             .Matches(@"^[\d\+\-\s]*$").WithMessage("Số điện thoại chỉ được chứa số");
 

@@ -15,9 +15,9 @@ public partial class Payment
 
     public string PaymentStatus { get; set; } = null!;
 
-    public string? PhoneNumber { get; set; }
+    public string? ProviderTransactionId { get; set; }
 
-    public string? Address { get; set; }
+    public string? IdempotencyKey { get; set; }
 
     public virtual Order Order { get; set; } = null!;
 }

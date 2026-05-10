@@ -8,42 +8,39 @@ namespace Application.Consumers
 {
     public class CheckOrderExpirationConsumer : IConsumer<ReserveOrderEvent>
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IDatabase _redisConnection;
 
-        public CheckOrderExpirationConsumer(IUnitOfWork unitOfWork, IConnectionMultiplexer multiplexer)
+        public CheckOrderExpirationConsumer(IConnectionMultiplexer multiplexer)
         {
-            _unitOfWork = unitOfWork;
             _redisConnection = multiplexer.GetDatabase();
         }
 
         public async Task Consume(ConsumeContext<ReserveOrderEvent> context)
         {
-            int orderId = context.Message.OrderId;
-            string reservationKey = $"Order:Reservation:{orderId}";
+            string reservationId = context.Message.ReservationId;
+            string reservationKey = $"Order:Reservation:{reservationId}";
             var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
+
             if (!reservationValue.HasValue)
             {
-                return; 
+                // Reservation đã được xử lý (đã thanh toán) hoặc đã hết hạn tự động
+                return;
             }
 
-            var order = await _unitOfWork.OrderRepository.GetByIdAsync(orderId);
-            if (order != null && order.Status == "Pending" && order.Payment?.PaymentStatus == "Unpaid")
+            // Reservation vẫn còn → chưa thanh toán → hoàn trả stock trong Redis
+            var reservationData = JsonSerializer.Deserialize<JsonElement>(reservationValue!);
+            var itemsElement = reservationData.GetProperty("Items");
+            var items = JsonSerializer.Deserialize<Dictionary<int, int>>(itemsElement.GetRawText());
+
+            if (items != null)
             {
-                order.Status = "Cancelled";
-
-                var items = JsonSerializer.Deserialize<Dictionary<int, int>>(reservationValue!);
-                if (items != null)
+                foreach (var item in items)
                 {
-                    foreach (var item in items)
-                    {
-                        string cacheKeyStock = $"Product:Stock:{item.Key}";
-                        await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
-                    }
+                    string cacheKeyStock = $"Product:Stock:{item.Key}";
+                    await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
                 }
-
-                await _unitOfWork.SaveChangesAsync();
             }
+
             await _redisConnection.KeyDeleteAsync(reservationKey);
         }
     }

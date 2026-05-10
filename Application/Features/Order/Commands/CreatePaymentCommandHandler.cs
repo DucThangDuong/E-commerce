@@ -1,4 +1,4 @@
-using Application.Common;
+﻿using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
 using Application.IServices;
@@ -13,7 +13,8 @@ using System.Collections.Generic;
 
 namespace Application.Features.Order.Commands
 {
-    public record CreatePaymentCommand(int OrderId, decimal Amount, string IpAddress,int TypePayment,string Address,string PhoneNumber) : IRequest<Result<string>>;
+    public record CreatePaymentCommand(string ReservationId, decimal Amount, string IpAddress, int TypePayment, string Address,
+        string PhoneNumber, string FullName, string idempotencyKey) : IRequest<Result<string>>;
 
     public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, Result<string>>
     {
@@ -24,47 +25,132 @@ namespace Application.Features.Order.Commands
         {
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
-            _redisConnection=connectionMultiplexer.GetDatabase();
-
+            _redisConnection = connectionMultiplexer.GetDatabase();
         }
 
         public async Task<Result<string>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
         {
+            string idempotencyKey = $"Idempotency:Payment:{request.idempotencyKey}";
+            var cachedResponse = await _redisConnection.StringGetAsync(idempotencyKey);
+            if (cachedResponse.HasValue)
+            {
+                if (cachedResponse == "PROCESSING")
+                {
+                    return Result<string>.Failure("Giao dịch đang được xử lý. Vui lòng không gửi lại.", 409);
+                }
+                return Result<string>.Success(cachedResponse!, 200);
+            }
+            bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(2), When.NotExists);
+            if (!lockAcquired)
+            {
+                return Result<string>.Failure("Giao dịch đang được xử lý.", 409);
+            }
             try
             {
-                var reservationValue = await _redisConnection.StringGetAsync($"Order:Reservation:{request.OrderId}");
-                if(!reservationValue.HasValue)
+                // 1. Đọc reservation từ Redis
+                string reservationKey = $"Order:Reservation:{request.ReservationId}";
+                var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
+                if (!reservationValue.HasValue)
                 {
                     return Result<string>.Failure("No reservation found for this order.", 404);
                 }
-                var reservedItems = JsonSerializer.Deserialize<Dictionary<int, int>>(reservationValue!);
+
+                var reservationData = JsonSerializer.Deserialize<JsonElement>(reservationValue!);
+                int customerId = reservationData.GetProperty("CustomerId").GetInt32();
+                var itemsElement = reservationData.GetProperty("Items");
+                var reservedItems = JsonSerializer.Deserialize<Dictionary<int, int>>(itemsElement.GetRawText());
+
+                if (reservedItems == null || !reservedItems.Any())
+                {
+                    return Result<string>.Failure("Reservation data is invalid.", 400);
+                }
+
+                // 2. Lấy giá sản phẩm từ DB
+                List<int> productIds = reservedItems.Keys.ToList();
+                Dictionary<int, decimal> productPrices = await _unitOfWork.ProductRepository.GetProductPricesAsync(productIds, cancellationToken);
+
+                // 3. Tạo OrderItems + tính tổng tiền
+                var orderItems = new List<OrderItem>();
+                decimal totalAmount = 0;
+
+                foreach (var item in reservedItems)
+                {
+                    int productId = item.Key;
+                    int quantity = item.Value;
+
+                    if (!productPrices.TryGetValue(productId, out decimal unitPrice))
+                    {
+                        return Result<string>.Failure($"Sản phẩm ID {productId} không có thông tin giá hợp lệ.");
+                    }
+
+                    orderItems.Add(new OrderItem
+                    {
+                        ProductId = productId,
+                        Quantity = quantity,
+                        UnitPriceAtPurchase = unitPrice
+                    });
+
+                    totalAmount += unitPrice * quantity;
+                }
+
+                // 4. Tạo Order
+                var newOrder = new Domain.Entities.Order
+                {
+                    CustomerId = customerId,
+                    CreatedAt = DateTime.UtcNow,
+                    TotalAmount = totalAmount,
+                    Status = 0,
+                    OrderItems = orderItems,
+                };
+
+                // 5. Tạo OrderShippingDetail
+                var shippingDetail = new OrderShippingDetail
+                {
+                    RecipientName = request.FullName,
+                    RecipientPhone = request.PhoneNumber,
+                    StreetAddress = request.Address,
+                };
+                newOrder.OrderShippingDetail = shippingDetail;
+
+                // 6. Tạo Payment
+                string provider = request.TypePayment == 0 ? "COD" : "VnPay";
+                var newPayment = new Payment
+                {
+                    Amount = totalAmount,
+                    Provider = provider,
+                    PaymentStatus = "Pending",
+                    IdempotencyKey= request.idempotencyKey,
+                };
+                newOrder.Payments.Add(newPayment);
+
+                // 7. Lưu Order 
+                await _unitOfWork.OrderRepository.AddAsync(newOrder);
+
+                // 8. Trừ stock trong DB
+                await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(reservedItems);
+
+                await _unitOfWork.SaveChangesAsync();
+
+                // 9. Xóa reservation khỏi Redis
+                await _redisConnection.KeyDeleteAsync(reservationKey);
+
+                // 10. Trả kết quả theo phương thức thanh toán
                 if (request.TypePayment == 0)
                 {
-                    Payment newPayment = new Payment
-                    {
-                        OrderId = request.OrderId,
-                        Amount = request.Amount,
-                        Provider = "COD",
-                        PaymentStatus = "Pending",
-                        Address = request.Address,
-                        PhoneNumber = request.PhoneNumber
-                    };
-                    await _unitOfWork.PaymentRepository.AddAsync(newPayment);
-                    await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(reservedItems);
-                    await _unitOfWork.SaveChangesAsync();
-                    await _redisConnection.KeyDeleteAsync($"Order:Reservation:{request.OrderId}");
-                    return Result<string>.Success("Payment created successfully with COD method.");
+                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, productIds);
+                    return Result<string>.Success("Payment created successfully with COD method.", 201);
                 }
                 else
                 {
-                    var paymentUrl = _vnPayService.CreatePaymentUrl(request.OrderId, request.Amount, request.IpAddress);
-                    await _redisConnection.KeyDeleteAsync($"Order:Reservation:{request.OrderId}");
-                    
-                    return Result<string>.Success(paymentUrl,201);
+                    var paymentUrl =  _vnPayService.CreatePaymentUrl(newOrder.OrderId, totalAmount, request.IpAddress);
+                    await _redisConnection.StringSetAsync(idempotencyKey,
+                        JsonSerializer.Serialize(paymentUrl), TimeSpan.FromHours(24));
+                    return Result<string>.Success(paymentUrl, 201);
                 }
             }
             catch (Exception ex)
             {
+                await _redisConnection.KeyDeleteAsync(idempotencyKey);
                 return Result<string>.Failure(ex.Message, 500);
             }
         }

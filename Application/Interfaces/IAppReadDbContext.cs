@@ -16,5 +16,6 @@ namespace Application.Interfaces
         DbSet<Payment> Payments { get; }
         DbSet<ProductImage> ProductImages { get; }
         DbSet<FeaturedProduct> FeaturedProducts { get; }
+        DbSet<OrderShippingDetail> OrderShippingDetails { get; }
     }
 }

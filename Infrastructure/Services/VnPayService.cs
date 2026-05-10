@@ -69,33 +69,11 @@ namespace Infrastructure.Services
             {
                 if (vnp_ResponseCode == "00")
                 {
-                    return new ResVnPayDTO
-                    {
-                        Success = true,
-                        Message = "Thanh toán thành công!",
-                        OrderId = orderId,
-                        TransactionId = vnpayTranId
-                    };
+                    return new ResVnPayDTO { Success = true, Message = "Thanh toán thành công!", OrderId = orderId, TransactionId = vnpayTranId };
                 }
-                else
-                {
-                    return new ResVnPayDTO
-                    {
-                        Success = false,
-                        Message = $"Thanh toán lỗi. Mã lỗi: {vnp_ResponseCode}",
-                        OrderId = orderId,
-                        TransactionId = vnpayTranId
-                    };
+                return new ResVnPayDTO { Success = false, Message = $"Thanh toán lỗi. Mã lỗi: {vnp_ResponseCode}", OrderId = orderId, TransactionId = vnpayTranId };
                 }
-            }
-            else
-            {
-                return new ResVnPayDTO
-                {
-                    Success = false,
-                    Message = "Có lỗi xảy ra trong quá trình xử lý (Sai chữ ký bảo mật)."
-                };
-            }
+            return new ResVnPayDTO { Success = false, Message = "Có lỗi xảy ra trong quá trình xử lý (Sai chữ ký bảo mật)." };
         }
     }
 }

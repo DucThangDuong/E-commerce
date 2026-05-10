@@ -19,7 +19,6 @@ public partial class Customer
 
     public DateTime CreatedAt { get; set; }
 
-
     public string? Role { get; set; }
 
     public string? LoginProvider { get; set; }

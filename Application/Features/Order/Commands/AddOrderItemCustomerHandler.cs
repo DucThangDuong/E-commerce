@@ -9,8 +9,8 @@ using System.Text.Json;
 
 namespace Application.Features.Order.Commands
 {
-    public record AddOrderItemCustomerCommand(int CustomerId, Dictionary<int,int> Items) : IRequest<Result<List<int>>>;
-    public class AddOrderItemCustomerHandler : IRequestHandler<AddOrderItemCustomerCommand, Result<List<int>>>
+    public record AddOrderItemCustomerCommand(int CustomerId, Dictionary<int,int> Items) : IRequest<Result<string>>;
+    public class AddOrderItemCustomerHandler : IRequestHandler<AddOrderItemCustomerCommand, Result<string>>
     {
         public readonly IUnitOfWork _unitOfWork;
         public readonly INotificationService _hubContext;
@@ -24,7 +24,7 @@ namespace Application.Features.Order.Commands
             _redisConnection = multiplexer.GetDatabase();
             _publishEndpoint = publishEndpoint;
         }
-        public async Task<Result<List<int>>> Handle(AddOrderItemCustomerCommand request, CancellationToken ct)
+        public async Task<Result<string>> Handle(AddOrderItemCustomerCommand request, CancellationToken ct)
         {
             List<int> productIds = request.Items.Keys.ToList();
 
@@ -69,7 +69,7 @@ namespace Application.Features.Order.Commands
 
             if (outOfStockItems.Any())
             {
-                return Result<List<int>>.Failure("Các sản phẩm không đủ tồn kho.", 400, outOfStockItems);
+                return Result<string>.Failure("Các sản phẩm không đủ tồn kho.", 400);
             }
 
             try
@@ -80,55 +80,27 @@ namespace Application.Features.Order.Commands
                     string cacheKeyStock = $"Product:Stock:{item.Key}";
                     await _redisConnection.StringDecrementAsync(cacheKeyStock, item.Value);
                 }
-
-                Dictionary<int, decimal> productPrices = await _unitOfWork.ProductRepository.GetProductPricesAsync(productIds, ct);
-
-                var orderItems = new List<OrderItem>();
-                decimal totalAmount = 0;
-
-                foreach (var item in request.Items)
-                {
-                    int productId = item.Key;
-                    int quantity = item.Value;
-
-                    if (!productPrices.TryGetValue(productId, out decimal unitPrice))
-                    {
-                        return Result<List<int>>.Failure($"Sản phẩm ID {productId} không có thông tin giá hợp lệ.");
-                    }
-
-                    orderItems.Add(new OrderItem
-                    {
-                        ProductId = productId,
-                        Quantity = quantity,
-                        UnitPriceAtPurchase = unitPrice
-                    });
-
-                    totalAmount += unitPrice * quantity;
-                }
-
-                var newOrder = new Domain.Entities.Order
+                // Lưu reservation vào Redis (CustomerId + Items)
+                string reservationId = Guid.NewGuid().ToString("N");
+                string reservationKey = $"Order:Reservation:{reservationId}";
+                var reservationData = new
                 {
                     CustomerId = request.CustomerId,
-                    OrderDate = DateTime.UtcNow,
-                    TotalAmount = totalAmount,
-                    Status = "Pending",
-                    OrderItems = orderItems,
+                    Items = request.Items
                 };
-                await _unitOfWork.OrderRepository.AddAsync(newOrder);
-                await _unitOfWork.CartRepository.DeleteCartItemsAsync(request.CustomerId, productIds, ct);
-                await _unitOfWork.SaveChangesAsync(ct);
+                await _redisConnection.StringSetAsync(reservationKey, JsonSerializer.Serialize(reservationData), TimeSpan.FromMinutes(15));
 
-                string reservationKey = $"Order:Reservation:{newOrder.OrderId}";
-                await _redisConnection.StringSetAsync(reservationKey, JsonSerializer.Serialize(request.Items), TimeSpan.FromMinutes(15));
-
-                await _publishEndpoint.Publish(new DTOs.Services.ReserveOrderEvent(newOrder.OrderId), context =>
+                // Publish sự kiện hết hạn
+                await _publishEndpoint.Publish(new DTOs.Services.ReserveOrderEvent(reservationId), context =>
                 {
                     context.Delay = TimeSpan.FromMinutes(15);
                 });
-                return Result<List<int>>.Success(new List<int> { newOrder.OrderId },201);
+
+                return Result<string>.Success(reservationId, 201);
             }
             catch (Exception)
             {
+                // Hoàn trả stock trong Redis nếu có lỗi
                 foreach (var item in request.Items)
                 {
                     string cacheKeyStock = $"Product:Stock:{item.Key}";

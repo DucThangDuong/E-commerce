@@ -26,10 +26,6 @@ namespace Infrastructure.Repositories
                 .Select(i => (int?)i.StockQuantity)
                 .FirstOrDefaultAsync(ct);
         }
-
-
-
-
         public async Task AddFeaturedProductAsync(FeaturedProduct featuredProduct, CancellationToken ct = default)
         {
             await _context.FeaturedProducts.AddAsync(featuredProduct, ct);
