@@ -66,5 +66,13 @@ namespace Infrastructure.Repositories
                     .SetProperty(x => x.PhoneNumber, n => phoneNumber ?? n.PhoneNumber)
                     .SetProperty(x => x.Address, n => address ?? n.Address), ct);
         }
+
+        public async Task<int> UpdateAvatarProfileAsync(int userId, string AvatarUrl)
+        {
+            return await _context.Customers
+                .Where(x => x.CustomerId == userId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.CustomAvatar, n => AvatarUrl));
+        }
     }
 }

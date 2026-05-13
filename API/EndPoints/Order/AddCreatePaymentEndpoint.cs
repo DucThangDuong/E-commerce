@@ -3,7 +3,6 @@ using Application.Features.Order.Commands;
 using FastEndpoints;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-
 using API.Extensions;
 using Application.Common;
 

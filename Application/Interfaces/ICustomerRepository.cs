@@ -10,5 +10,6 @@ namespace Application.Interfaces
         Task<Customer?> GetByEmailAsync(string email);
         Task<bool> EmailExistsAsync(string email);
         Task<int> UpdateCustomerProfileAsync(int customerId, string name, string? phoneNumber, string? address, CancellationToken ct = default);
+        Task<int> UpdateAvatarProfileAsync(int userId, string AvatarUrl);
     }
 }

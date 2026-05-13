@@ -241,6 +241,7 @@ namespace API
                     storageConfig["AccessKey"],
                     storageConfig["SecretKey"], config);
             });
+            builder.Services.AddScoped<IBlobService, AzureBlobService>();
             builder.Services.AddSingleton<IStorageService, S3StorageService>();
             //hub
             builder.Services.AddSignalR();

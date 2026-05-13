@@ -11,4 +11,8 @@ namespace API.DTOs
         public string PhoneNumber { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
     }
+    public class ResUpdateAvatarProfile
+    {
+        public IFormFile? AvatarFile { get; set; }
+    }
 }
