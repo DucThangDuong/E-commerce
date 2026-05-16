@@ -1,4 +1,5 @@
 using Amazon.S3;
+using API.DTOs;
 using API.Middleware;
 using Application.Consumers;
 using Application.Interfaces;
@@ -284,7 +285,7 @@ namespace API
             {
                 c.Errors.ResponseBuilder = (failures, ctx, statusCode) =>
                 {
-                    return new API.DTOs.ApiErrorResponse
+                    return new ApiErrorResponse
                     {
                         Message = "Dữ liệu đầu vào không hợp lệ.",
                         ErrorCode = "ERR_VALIDATION_FAILED",
