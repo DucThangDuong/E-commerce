@@ -1,4 +1,5 @@
 using Application.DTOs.Services;
+using Microsoft.AspNetCore.Http;
 using System;
 
 namespace Application.IServices
@@ -7,6 +8,7 @@ namespace Application.IServices
     public interface IVnPayService
     {
         string CreatePaymentUrl(int orderId, decimal amount, string ipAddress);
-        ResVnPayDTO PaymentCallback(Microsoft.AspNetCore.Http.IQueryCollection collections);
+        ResVnPayDTO PaymentCallback(IQueryCollection collections);
+        bool ValidateSignature(IQueryCollection collections);
     }
 }

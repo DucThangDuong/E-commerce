@@ -24,7 +24,9 @@ namespace Infrastructure.Repositories
 
         public async Task<Order?> GetByIdAsync(int orderId)
         {
-            return await _context.Orders.FirstOrDefaultAsync(e => e.OrderId == orderId);
+            return await _context.Orders
+                .Include(e => e.Payments)
+                .FirstOrDefaultAsync(e => e.OrderId == orderId);
         }
 
 

@@ -22,9 +22,9 @@ namespace Infrastructure.Services
             await _hubContext.Clients.Group(groupName).SendAsync("ReceiveProductUpdate", message);
         }
 
-        public async Task SendMessageToUser(string userId, string message)
+        public async Task SendMessageToOrderId(string orderId, string message)
         {
-            await _hubContext.Clients.User(userId).SendAsync("ReceiveMessage", message);
+            await _hubContext.Clients.Group(orderId).SendAsync("ReceiveOrderIdMessage", message);
         }
 
         public async Task AddConnectionToGroup(string connectionId, string groupName)

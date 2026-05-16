@@ -13,4 +13,9 @@ namespace Application.DTOs.Services
         public string OrderId { get; set; } = string.Empty;
         public string TransactionId { get; set; } = string.Empty;
     }
+    public class ResIpnDTO
+    {
+        public string RspCode { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    };
 }

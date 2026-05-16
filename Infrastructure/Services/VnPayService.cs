@@ -8,15 +8,17 @@ namespace Infrastructure.Services
     public class VnPayService : IVnPayService
     {
         private readonly IConfiguration _configuration;
-        public VnPayService(IConfiguration configuration) { 
+        public VnPayService(IConfiguration configuration)
+        {
             _configuration = configuration;
         }
         public string CreatePaymentUrl(int orderId, decimal amount, string ipAddress)
         {
-            string vnp_Returnurl = _configuration["VnPayConfig:ReturnUrl"] ?? "" ;
+            string vnp_Returnurl = _configuration["VnPayConfig:ReturnUrl"] ?? "";
             string vnp_Url = _configuration["VnPayConfig:BaseUrl"] ?? "";
             string vnp_TmnCode = _configuration["VnPayConfig:TmnCode"] ?? "";
             string vnp_HashSecret = _configuration["VnPayConfig:HashSecret"] ?? "";
+            string vnp_IpnUrl = _configuration["VnPayConfig:IpnUrl"] ?? "";
 
             if (string.IsNullOrEmpty(ipAddress) || ipAddress == "::1")
             {
@@ -37,8 +39,9 @@ namespace Infrastructure.Services
             vnpay.AddRequestData("vnp_Locale", "vn");
             vnpay.AddRequestData("vnp_OrderInfo", orderId.ToString());
             vnpay.AddRequestData("vnp_OrderType", "other");
-            vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
             vnpay.AddRequestData("vnp_TxnRef", orderId.ToString());
+            vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
+            //vnpay.AddRequestData("vnp_IpnUrl", vnp_IpnUrl);
             //vnpay.AddRequestData("vnp_ExpireDate", DateTime.Now.AddMinutes(15).ToString("yyyyMMddHHmmss"));
 
             string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
@@ -72,8 +75,24 @@ namespace Infrastructure.Services
                     return new ResVnPayDTO { Success = true, Message = "Thanh toán thành công!", OrderId = orderId, TransactionId = vnpayTranId };
                 }
                 return new ResVnPayDTO { Success = false, Message = $"Thanh toán lỗi. Mã lỗi: {vnp_ResponseCode}", OrderId = orderId, TransactionId = vnpayTranId };
-                }
+            }
             return new ResVnPayDTO { Success = false, Message = "Có lỗi xảy ra trong quá trình xử lý (Sai chữ ký bảo mật)." };
+        }
+
+        public bool ValidateSignature(IQueryCollection collections)
+        {
+            var vnpay = new VnPayLibrary();
+
+            foreach (var (key, value) in collections)
+            {
+                if (!string.IsNullOrEmpty(key) && key.StartsWith("vnp_"))
+                {
+                    vnpay.AddResponseData(key, value.ToString());
+                }
+            }
+            var vnp_SecureHash = collections.FirstOrDefault(p => p.Key == "vnp_SecureHash").Value.ToString();
+            string vnp_HashSecret = _configuration["VnPayConfig:HashSecret"] ?? "";
+            return vnpay.ValidateSignature(vnp_SecureHash, vnp_HashSecret);
         }
     }
 }
