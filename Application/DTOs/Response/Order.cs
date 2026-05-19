@@ -5,7 +5,7 @@ namespace Application.DTOs.Response
         public int OrderId { get; set; }
         public DateTime? OrderDate { get; set; }
         public decimal TotalAmount { get; set; }
-        public int Status { get; set; } 
+        public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
@@ -13,6 +13,8 @@ namespace Application.DTOs.Response
     }
     public class ResOrderWithItems
     {
+        public int ColorId { get; set; }
+        public string ColorName { get; set; } = null!;
         public int quantity { get; set; }
         public decimal unitPriceAtPurchase { get; set; }
         public string name { get; set; } = null!;

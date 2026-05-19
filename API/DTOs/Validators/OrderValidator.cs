@@ -14,7 +14,7 @@ public class OrderValidator : Validator<ReqAddNewOrder>
 
         RuleForEach(x => x.Items).ChildRules(items =>
         {
-            items.RuleFor(x => x.ProductId)
+            items.RuleFor(x => x.ColorId)
                 .GreaterThan(0).WithMessage("ProductId phải lớn hơn 0.");
             
             items.RuleFor(x => x.Quantity)

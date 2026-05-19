@@ -41,9 +41,9 @@ namespace API
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddFastEndpoints();
-            builder.Services.AddDbContext<EcommerceOrderSystemContext>(options =>
+            builder.Services.AddDbContext<EcommerceContext>(options =>
             {
-                options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"], sqlOptions =>
+                options.UseSqlServer(builder.Configuration["ConnectionStrings:AZURE_SQL_CONNECTIONSTRING"], sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,
@@ -65,7 +65,7 @@ namespace API
                 x.AddConsumer<SendMail>();
                 x.AddConsumer<CheckOrderExpirationConsumer>();
 
-                x.AddEntityFrameworkOutbox<EcommerceOrderSystemContext>(o =>
+                x.AddEntityFrameworkOutbox<EcommerceContext>(o =>
                 {
                     o.UseSqlServer();
                     o.UseBusOutbox();
@@ -227,7 +227,7 @@ namespace API
             builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
             builder.Services.AddScoped<IOrderShippingDetailRepository, OrderShippingDetailRepository>();
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceOrderSystemContext>());
+            builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceContext>());
 
             // Storage (MinIO / S3)
             var storageConfig = builder.Configuration.GetSection("Storage");

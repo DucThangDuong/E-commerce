@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories
 {
     public class CustomerRepository : ICustomerRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public CustomerRepository(EcommerceOrderSystemContext context)
+        public CustomerRepository(EcommerceContext context)
         {
             _context = context;
         }

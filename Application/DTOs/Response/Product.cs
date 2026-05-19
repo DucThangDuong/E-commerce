@@ -6,6 +6,15 @@ using System.Threading.Tasks;
 
 namespace Application.DTOs.Response
 {
+    public class ResProductColorDto
+    {
+        public int ColorId { get; set; }
+        public string ColorName { get; set; } = null!;
+        public decimal? PriceAdjustment { get; set; }
+        public int StockQuantity { get; set; }
+        public List<string>? ImageUrls { get; set; }
+    }
+
     public class ResProductDto
     {
         public int ProductId { get; set; }
@@ -19,8 +28,8 @@ namespace Application.DTOs.Response
         public string? Description { get; set; }
 
         public decimal BasePrice { get; set; }
-        public int StockQuantity { get; set; }
-        public List<string>? imageUrl { get; set; } 
+        public List<string>? ImageUrls { get; set; } 
+        public List<ResProductColorDto> Colors { get; set; } = new List<ResProductColorDto>();
     }
     public class FileUploadDto
     {

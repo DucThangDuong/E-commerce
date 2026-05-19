@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,8 @@ namespace Application.DTOs.Response
     {
         public int CartId { get; set; }
         public int ProductId { get; set; }
+        public int ColorId { get; set; }
+        public string ColorName { get; set; } = null!;
 
         public int Quantity { get; set; }
         public int CategoryId { get; set; }

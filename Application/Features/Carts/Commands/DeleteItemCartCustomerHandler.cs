@@ -4,7 +4,7 @@ using MediatR;
 
 namespace Application.Features.Carts.Commands
 {
-    public record DeleteItemCartCustomerCommand(int CustomerId, int ProductId) : IRequest<Result>;
+    public record DeleteItemCartCustomerCommand(int CustomerId, int ColorId) : IRequest<Result>;
 
     public class DeleteItemCartCustomerHandler : IRequestHandler<DeleteItemCartCustomerCommand, Result>
     {
@@ -17,7 +17,7 @@ namespace Application.Features.Carts.Commands
 
         public async Task<Result> Handle(DeleteItemCartCustomerCommand command, CancellationToken ct)
         {
-            bool result = await _unitOfWork.CartRepository.DeleteCartAsync(command.CustomerId, command.ProductId);
+            bool result = await _unitOfWork.CartRepository.DeleteCartAsync(command.CustomerId, command.ColorId);
             if (result)
             {
                 return Result.Success(204);

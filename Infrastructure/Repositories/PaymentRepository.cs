@@ -10,8 +10,8 @@ namespace Infrastructure.Repositories
 {
     public class PaymentRepository : IPaymentRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
-        public PaymentRepository(EcommerceOrderSystemContext context)
+        private readonly EcommerceContext _context;
+        public PaymentRepository(EcommerceContext context)
         {
             _context = context;
         }

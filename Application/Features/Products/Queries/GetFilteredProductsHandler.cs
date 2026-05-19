@@ -56,8 +56,15 @@ namespace Application.Features.Products.Queries
                         Description = e.Description,
                         Name = e.Name,
                         ProductId = e.ProductId,
-                        StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
-                        imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                        ImageUrls = e.ProductImages.Where(pi => pi.ColorId == null).Select(pi => pi.ImageUrl).ToList(),
+                        Colors = e.ProductColors.Select(pc => new ResProductColorDto
+                        {
+                            ColorId = pc.ColorId,
+                            ColorName = pc.ColorName,
+                            PriceAdjustment = pc.PriceAdjustment,
+                            StockQuantity = pc.Inventory != null ? pc.Inventory.StockQuantity : 0,
+                            ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
+                        }).ToList()
                     })
                     .ToListAsync(ct);
 

@@ -10,39 +10,36 @@ namespace Infrastructure.Repositories
 {
     public class InventoryRepository : IInventoryRepository
     {
-        public readonly EcommerceOrderSystemContext _context;
-        public InventoryRepository(EcommerceOrderSystemContext context) { 
+        public readonly EcommerceContext _context;
+        public InventoryRepository(EcommerceContext context) { 
             _context = context;
         }
         public async Task<int> GetStockQuantity(int productId)
         {
             return await _context.Inventories
-                .Where(i => i.ProductId == productId)
-                .Select(i => i.StockQuantity)
-                .FirstOrDefaultAsync();
+                .Where(i => i.Color.ProductId == productId)
+                .SumAsync(i => i.StockQuantity);
         }
 
-        public async Task<Dictionary<int, int>> GetStockByProductIdsAsync(List<int> productIds, CancellationToken ct = default)
+        public async Task<Dictionary<int, int>> GetStockByColorIdsAsync(List<int> colorIds, CancellationToken ct = default)
         {
             return await _context.Inventories
                 .AsNoTracking()
-                .Where(i => productIds.Contains(i.ProductId))
-                .ToDictionaryAsync(i => i.ProductId, i => i.StockQuantity, ct);
+                .Where(i => colorIds.Contains(i.ColorId))
+                .ToDictionaryAsync(i => i.ColorId, i => i.StockQuantity, ct);
         }
 
         public async Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default)
         {
             if (purchasedItems != null)
             {
-
-                var productIds = purchasedItems.Keys.ToList();
+                var colorIds = purchasedItems.Keys.ToList();
                 var inventories = await _context.Inventories
-                    .Where(i => productIds.Contains(i.ProductId))
+                    .Where(i => colorIds.Contains(i.ColorId))
                     .ToListAsync(ct);
-                var updatedStock = new Dictionary<int, int>();
                 foreach (var inventory in inventories)
                 {
-                    if (purchasedItems.TryGetValue(inventory.ProductId, out int purchasedQuantity))
+                    if (purchasedItems.TryGetValue(inventory.ColorId, out int purchasedQuantity))
                     {
                         inventory.StockQuantity -= purchasedQuantity;
                     }

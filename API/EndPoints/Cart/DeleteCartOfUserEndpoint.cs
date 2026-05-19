@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace API.EndPoints.Cart
 {
-    public class ReqDeleteCartDto { public int productId { get; set; } }
+    public class ReqDeleteCartDto { public int colorId { get; set; } }
 
     public class DeleteCartOfUserEndpoint : Endpoint<ReqDeleteCartDto>
     {
@@ -22,7 +22,7 @@ namespace API.EndPoints.Cart
         public override async Task HandleAsync(ReqDeleteCartDto req, CancellationToken ct)
         {
             var userId = HttpContext.User.GetUserId();
-            var result = await Mediator.Send(new DeleteItemCartCustomerCommand(userId, req.productId), ct);
+            var result = await Mediator.Send(new DeleteItemCartCustomerCommand(userId, req.colorId), ct);
             await this.SendApiResponseAsync(result, ct);
         }
     }

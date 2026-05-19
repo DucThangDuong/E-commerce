@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories
 {
     public class ProductRepository : IProductRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public ProductRepository(EcommerceOrderSystemContext context)
+        public ProductRepository(EcommerceContext context)
         {
             _context = context;
         }
@@ -22,29 +22,26 @@ namespace Infrastructure.Repositories
         public async Task<int?> GetStockQuantityAsync(int productId, CancellationToken ct = default)
         {
             return await _context.Inventories
-                .Where(i => i.ProductId == productId)
-                .Select(i => (int?)i.StockQuantity)
-                .FirstOrDefaultAsync(ct);
+                .Where(i => i.Color.ProductId == productId)
+                .SumAsync(i => (int?)i.StockQuantity, ct);
         }
         public async Task AddFeaturedProductAsync(FeaturedProduct featuredProduct, CancellationToken ct = default)
         {
             await _context.FeaturedProducts.AddAsync(featuredProduct, ct);
         }
 
-
-
         public async Task<bool> ProductExistsAsync(int productId, CancellationToken ct = default)
         {
             return await _context.Products.AnyAsync(e=>e.ProductId == productId);
         }
 
-
-        public async Task<Dictionary<int, decimal>> GetProductPricesAsync(List<int> productIds, CancellationToken ct = default)
+        public async Task<Dictionary<int, decimal>> GetPricesByColorIdsAsync(List<int> colorIds, CancellationToken ct = default)
         {
-            return await _context.Products
+            return await _context.ProductColors
+                .Include(pc => pc.Product)
                 .AsNoTracking()
-                .Where(p => productIds.Contains(p.ProductId))
-                .ToDictionaryAsync(p => p.ProductId, p => p.BasePrice, ct);
+                .Where(pc => colorIds.Contains(pc.ColorId))
+                .ToDictionaryAsync(pc => pc.ColorId, pc => pc.Product.BasePrice + (pc.PriceAdjustment ?? 0), ct);
         }
     }
 }

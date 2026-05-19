@@ -9,7 +9,7 @@ namespace Application.Interfaces
     public interface IInventoryRepository
     {
         public Task<int> GetStockQuantity(int productId);
-        Task<Dictionary<int, int>> GetStockByProductIdsAsync(List<int> productIds, CancellationToken ct = default);
+        Task<Dictionary<int, int>> GetStockByColorIdsAsync(List<int> colorIds, CancellationToken ct = default);
         Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default);
     }
 }

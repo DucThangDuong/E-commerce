@@ -28,18 +28,12 @@ namespace Application.Features.Products.Queries
             try
             {
                 string cacheKeyInfo = $"Product:Detail:{query.ProductId}";
-                string cacheKeyStock = $"Product:Stock:{query.ProductId}";
                 var infoTask = await _redisConnection.StringGetAsync(cacheKeyInfo);
-                var stockTask = await _redisConnection.StringGetAsync(cacheKeyStock);
                 if (!infoTask.IsNullOrEmpty)
                 {
                     var cachedProduct = JsonSerializer.Deserialize<ResProductDto>(infoTask.ToString());
-                    if (cachedProduct != null && !stockTask.IsNull)
+                    if (cachedProduct != null)
                     {
-                        if (int.TryParse(stockTask.ToString(), out int stockQuantity))
-                        {
-                            cachedProduct.StockQuantity = stockQuantity;
-                        }
                         return Result<ResProductDto>.Success(cachedProduct);
                     }
                 }
@@ -55,8 +49,15 @@ namespace Application.Features.Products.Queries
                         Description = e.Description,
                         Name = e.Name,
                         ProductId = e.ProductId,
-                        StockQuantity = e.Inventory != null ? e.Inventory.StockQuantity : 0,
-                        imageUrl = e.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                        ImageUrls = e.ProductImages.Where(pi => pi.ColorId == null).Select(pi => pi.ImageUrl).ToList(),
+                        Colors = e.ProductColors.Select(pc => new ResProductColorDto
+                        {
+                            ColorId = pc.ColorId,
+                            ColorName = pc.ColorName,
+                            PriceAdjustment = pc.PriceAdjustment,
+                            StockQuantity = pc.Inventory != null ? pc.Inventory.StockQuantity : 0,
+                            ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
+                        }).ToList()
                     })
                     .FirstOrDefaultAsync(ct);
 
@@ -69,8 +70,7 @@ namespace Application.Features.Products.Queries
                     await _notificationService.AddConnectionToGroup(query.ConnectionId, $"Product_{query.ProductId}");
                 }
                 await _redisConnection.StringSetAsync(cacheKeyInfo, JsonSerializer.Serialize(product), TimeSpan.FromMinutes(10));
-                await _redisConnection.StringSetAsync(cacheKeyStock, product.StockQuantity.ToString(), TimeSpan.FromMinutes(10));
-                return Result<ResProductDto>.Success(product,200);
+                return Result<ResProductDto>.Success(product, 200);
             }
             catch (Exception ex)
             {

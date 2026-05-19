@@ -8,7 +8,7 @@ public class CartValidator : Validator<ReqCreateCartDto>
     public CartValidator()
     {
 
-        RuleFor(x => x.product_id)
+        RuleFor(x => x.color_id)
             .GreaterThan(0).WithMessage("product_id phải lớn hơn 0");
 
         RuleFor(x => x.quantity)

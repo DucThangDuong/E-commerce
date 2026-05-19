@@ -1,6 +1,7 @@
 using API.DTOs;
 using Application.Common;
 using FastEndpoints;
+using Microsoft.AspNetCore.Http;
 
 namespace API.Extensions
 {
@@ -36,12 +37,17 @@ namespace API.Extensions
         }
 
         public static async Task SendApiResponseAsync(
-            this BaseEndpoint ep, 
-            Result result, 
+            this BaseEndpoint ep,
+            Result result,
             CancellationToken ct,
             string Message = "Thực hiện thành công",
             string defaultErrorCode = "ERR_BAD_REQUEST")
         {
+            if (result.StatusCode == 204 || result.StatusCode == 205 || result.StatusCode == 304)
+            {
+                await ep.HttpContext.Response.SendAsync(result.StatusCode, cancellation: ct);
+                return;
+            }
             if (result.IsSuccess)
             {
                 var response = new ApiSuccessResponse<object>

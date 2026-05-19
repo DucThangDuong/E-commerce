@@ -21,12 +21,12 @@ namespace API.EndPoints.Cart
         public override async Task HandleAsync(ReqCreateCartDto req, CancellationToken ct)
         {
             int userId = HttpContext.User.GetUserId();
-            if (userId == 0 || req.product_id == 0 || req.quantity == 0)
+            if (userId == 0 || req.color_id == 0 || req.quantity == 0)
             {
                 await Send.ResponseAsync(new { message = "customer_id, product_id and quantity must be provided and greater than 0" }, statusCode: 400, ct);
                 return;
             }
-            var result = await Mediator.Send(new AddItemCartCustomerCommand(userId, req.product_id, req.quantity), ct);
+            var result = await Mediator.Send(new AddItemCartCustomerCommand(userId, req.color_id, req.quantity), ct);
             await this.SendApiResponseAsync(result, ct);
         }
     }

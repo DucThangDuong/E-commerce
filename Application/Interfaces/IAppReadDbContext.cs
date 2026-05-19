@@ -5,17 +5,40 @@ namespace Application.Interfaces
 {
     public interface IAppReadDbContext
     {
-        DbSet<Product> Products { get; }
         DbSet<Brand> Brands { get; }
-        DbSet<Category> Categories { get; }
+
         DbSet<Cart> Carts { get; }
+
+        DbSet<Category> Categories { get; }
+
+        DbSet<Coupon> Coupons { get; }
+
+        DbSet<CouponUsage> CouponUsages { get; }
+
         DbSet<Customer> Customers { get; }
-        DbSet<Order> Orders { get; }
-        DbSet<OrderItem> OrderItems { get; }
-        DbSet<Inventory> Inventories { get; }
-        DbSet<Payment> Payments { get; }
-        DbSet<ProductImage> ProductImages { get; }
+
         DbSet<FeaturedProduct> FeaturedProducts { get; }
+
+        DbSet<Inventory> Inventories { get; }
+
+        DbSet<Order> Orders { get; }
+
+        DbSet<OrderItem> OrderItems { get; }
+
         DbSet<OrderShippingDetail> OrderShippingDetails { get; }
+
+        DbSet<Payment> Payments { get; }
+
+        DbSet<Product> Products { get; }
+
+        DbSet<ProductColor> ProductColors { get; }
+
+        DbSet<ProductImage> ProductImages { get; }
+
+        DbSet<ProductSpecification> ProductSpecifications { get; }
+
+        DbSet<Promotion> Promotions { get; }
+
+        DbSet<Specification> Specifications { get; }
     }
 }

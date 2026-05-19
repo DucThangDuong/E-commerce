@@ -1,4 +1,4 @@
-﻿using Application.Common;
+using Application.Common;
 using Application.DTOs.Response;
 using Application.Interfaces;
 using Application.IServices;
@@ -66,8 +66,8 @@ namespace Application.Features.Order.Commands
                 }
 
                 // 2. Lấy giá sản phẩm từ DB
-                List<int> productIds = reservedItems.Keys.ToList();
-                Dictionary<int, decimal> productPrices = await _unitOfWork.ProductRepository.GetProductPricesAsync(productIds, cancellationToken);
+                List<int> colorIds = reservedItems.Keys.ToList();
+                Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, cancellationToken);
 
                 // 3. Tạo OrderItems + tính tổng tiền
                 var orderItems = new List<OrderItem>();
@@ -75,17 +75,17 @@ namespace Application.Features.Order.Commands
 
                 foreach (var item in reservedItems)
                 {
-                    int productId = item.Key;
+                    int colorId = item.Key;
                     int quantity = item.Value;
 
-                    if (!productPrices.TryGetValue(productId, out decimal unitPrice))
+                    if (!colorPrices.TryGetValue(colorId, out decimal unitPrice))
                     {
-                        return Result<string>.Failure($"Sản phẩm ID {productId} không có thông tin giá hợp lệ.");
+                        return Result<string>.Failure($"Màu sản phẩm ID {colorId} không có thông tin giá hợp lệ.");
                     }
 
                     orderItems.Add(new OrderItem
                     {
-                        ProductId = productId,
+                        ColorId = colorId,
                         Quantity = quantity,
                         UnitPriceAtPurchase = unitPrice
                     });
@@ -97,9 +97,9 @@ namespace Application.Features.Order.Commands
                 var newOrder = new Domain.Entities.Order
                 {
                     CustomerId = customerId,
-                    CreatedAt = DateTime.UtcNow,
+                    OrderDate = DateTime.UtcNow,
                     TotalAmount = totalAmount,
-                    Status = 0,
+                    Status = "Pending",
                     OrderItems = orderItems,
                 };
 
@@ -121,7 +121,7 @@ namespace Application.Features.Order.Commands
                     PaymentStatus = "Pending",
                     IdempotencyKey= request.idempotencyKey,
                 };
-                newOrder.Payments.Add(newPayment);
+                newOrder.Payment = newPayment;
 
                 // 7. Lưu Order 
                 await _unitOfWork.OrderRepository.AddAsync(newOrder);
@@ -137,7 +137,7 @@ namespace Application.Features.Order.Commands
                 // 10. Trả kết quả theo phương thức thanh toán
                 if (request.TypePayment == 0)
                 {
-                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, productIds);
+                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
                     return Result<string>.Success("Payment created successfully with COD method.", 201);
                 }
                 else

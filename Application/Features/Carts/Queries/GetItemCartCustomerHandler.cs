@@ -26,15 +26,17 @@ namespace Application.Features.Carts.Queries
                     .Where(e => e.CustomerId == query.CustomerId)
                     .Select(e => new ResCartDto
                     {
-                        BasePrice = e.Product.BasePrice,
+                        BasePrice = e.Color.Product.BasePrice,
                         CartId = e.CartId,
-                        CategoryId = e.Product.CategoryId,
-                        Description = e.Product.Description,
-                        Name = e.Product.Name,
-                        ProductId = e.Product.ProductId,
+                        CategoryId = e.Color.Product.CategoryId,
+                        Description = e.Color.Product.Description,
+                        Name = e.Color.Product.Name,
+                        ProductId = e.Color.ProductId,
+                        ColorId = e.ColorId,
+                        ColorName = e.Color.ColorName,
                         Quantity = e.Quantity,
-                        StockQuantity = e.Product.Inventory != null ? e.Product.Inventory.StockQuantity : 0,
-                        imageUrl = e.Product.ProductImages.Select(pi => pi.ImageUrl).ToList(),
+                        StockQuantity = e.Color.Inventory != null ? e.Color.Inventory.StockQuantity : 0,
+                        imageUrl = e.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == e.ColorId).Select(pi => pi.ImageUrl).ToList(),
                     })
                     .ToListAsync(ct);
                 return Result<List<ResCartDto>>.Success(result,200);

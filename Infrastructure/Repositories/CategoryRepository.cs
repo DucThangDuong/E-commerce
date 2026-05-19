@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories
 {
     public class CategoryRepository : ICategoryRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public CategoryRepository(EcommerceOrderSystemContext context)
+        public CategoryRepository(EcommerceContext context)
         {
             _context = context;
         }

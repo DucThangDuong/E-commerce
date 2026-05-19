@@ -19,15 +19,15 @@ public partial class Product
 
     public virtual Brand? Brand { get; set; }
 
-    public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
-
     public virtual Category Category { get; set; } = null!;
 
     public virtual FeaturedProduct? FeaturedProduct { get; set; }
 
-    public virtual Inventory? Inventory { get; set; }
-
-    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    public virtual ICollection<ProductColor> ProductColors { get; set; } = new List<ProductColor>();
 
     public virtual ICollection<ProductImage> ProductImages { get; set; } = new List<ProductImage>();
+
+    public virtual ICollection<ProductSpecification> ProductSpecifications { get; set; } = new List<ProductSpecification>();
+
+    public virtual ICollection<Promotion> Promotions { get; set; } = new List<Promotion>();
 }

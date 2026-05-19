@@ -40,29 +40,37 @@ namespace Application.Features.Order.Commands
                     return Result<ResIpnDTO>.Failure("Invalid amount", 400, new ResIpnDTO { RspCode = "04", Message = "Invalid amount" });
                 }
 
-                if (order.PaymentStatus == (int)Payment_status.Success || order.Status == (int)Order_status.Cancelled)
+                // 3. Kiểm tra xem đơn hàng đã được cập nhật trước đó chưa (Chống gọi IPN nhiều lần)
+                if (order.Status == "Confirmed" || order.Status == "Cancelled" || order.Status == "Failed")
                 {
                     return Result<ResIpnDTO>.Failure("Order already processed", 400, new ResIpnDTO { RspCode = "02", Message = "Order already confirmed" });
                 }
 
+                // 4. Cập nhật trạng thái dựa vào vnp_ResponseCode
                 if (request.ResponseCode == "00")
                 {
-                    order.PaymentStatus = (int)Payment_status.Success;
-                    order.Status = (int)Order_status.Completed; 
-                    var payment = order.Payments.FirstOrDefault(p => p.Provider == "VnPay");
-                    if (payment != null)
+                    // Khách thanh toán thành công
+                    order.Status = "Confirmed"; // Hoặc trạng thái chuẩn bị giao hàng
+
+                    // Lưu vết giao dịch
+                    if (order.Payment != null)
                     {
-                        payment.PaymentStatus = "Paid";
-                        payment.ProviderTransactionId = request.TransactionNo;
+                        order.Payment.PaymentStatus = "Paid";
+                        order.Payment.ProviderTransactionId = request.TransactionNo;
                     }
-                    await _notificationService.SendMessageToOrderId(order.OrderId.ToString(), $"Thanh toán thành công đơn hàng #{order.OrderId}");
+
+                    // Bắn SignalR báo khách hàng thanh toán thành công
+                    await _notificationService.SendMessageToOrderId(
+                        order.OrderId.ToString(), 
+                        $"Thanh toán thành công đơn hàng #{order.OrderId}"
+                    );
                 }
                 else
                 {
-                    var payment = order.Payments.FirstOrDefault(p => p.Provider == "VnPay");
-                    if (payment != null)
+                    // Khách hủy thanh toán hoặc thanh toán lỗi
+                    if (order.Payment != null)
                     {
-                        payment.PaymentStatus = "Fail";
+                        order.Payment.PaymentStatus = "Fail";
                     }
                 }
 

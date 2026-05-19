@@ -4,7 +4,7 @@ namespace Infrastructure.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
         public ICustomerRepository CustomerRepository { get; }
         public ICartRepository CartRepository { get; }
@@ -17,7 +17,7 @@ namespace Infrastructure.Repositories
         public IOrderShippingDetailRepository OrderShippingDetailRepository { get; }
 
         public UnitOfWork(
-            EcommerceOrderSystemContext context,
+            EcommerceContext context,
             ICustomerRepository customerRepository,
             ICartRepository cartRepository,
             ICategoryRepository categoryRepository,

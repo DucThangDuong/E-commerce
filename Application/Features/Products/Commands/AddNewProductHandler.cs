@@ -55,11 +55,19 @@ namespace Application.Features.Products.Commands
                     Description = command.Description,
                     BasePrice = command.BasePrice,
                     BrandId = command.BrandId,
-                    Inventory = new Inventory
+                    ProductColors = new List<ProductColor>
                     {
-                        StockQuantity = command.StockQuantity,
-                        ReservedQuantity = 0,
-                        LastUpdated = DateTime.UtcNow
+                        new ProductColor
+                        {
+                            ColorName = "Default",
+                            PriceAdjustment = 0,
+                            Inventory = new Inventory
+                            {
+                                StockQuantity = command.StockQuantity,
+                                ReservedQuantity = 0,
+                                LastUpdated = DateTime.UtcNow
+                            }
+                        }
                     },
                     ProductImages = imageUrls.Select((url, index) => new ProductImage
                     {

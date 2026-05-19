@@ -5,9 +5,9 @@ namespace Infrastructure.Repositories
 {
     public class OrderShippingDetailRepository : IOrderShippingDetailRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public OrderShippingDetailRepository(EcommerceOrderSystemContext context)
+        public OrderShippingDetailRepository(EcommerceContext context)
         {
             _context = context;
         }

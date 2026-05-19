@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Carts.Commands
 {
-    public record AddItemCartCustomerCommand(int CustomerId, int ProductId, int Quantity) : IRequest<Result>;
+    public record AddItemCartCustomerCommand(int CustomerId, int ColorId, int Quantity) : IRequest<Result>;
 
     public class AddItemCartCustomerHandler : IRequestHandler<AddItemCartCustomerCommand, Result>
     {
@@ -23,14 +23,15 @@ namespace Application.Features.Carts.Commands
         {
             try
             {
-                int? stockQuantity = await _unitOfWork.ProductRepository.GetStockQuantityAsync(command.ProductId, ct);
+                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { command.ColorId }, ct);
+                int? stockQuantity = dbStockMap.ContainsKey(command.ColorId) ? dbStockMap[command.ColorId] : null;
 
                 if (stockQuantity == null)
                 {
-                    return Result.Failure("Product not found.", 404);
+                    return Result.Failure("Variant not found.", 404);
                 }
 
-                var existingCart = await _unitOfWork.CartRepository.GetCartAsync(command.CustomerId, command.ProductId);
+                var existingCart = await _unitOfWork.CartRepository.GetCartAsync(command.CustomerId, command.ColorId);
                 int currentQuantityInCart = existingCart?.Quantity ?? 0;
 
                 if (stockQuantity.Value == 0 || (currentQuantityInCart + command.Quantity) > stockQuantity.Value)
@@ -47,7 +48,7 @@ namespace Application.Features.Carts.Commands
                     Cart newCart = new Cart
                     {
                         CustomerId = command.CustomerId,
-                        ProductId = command.ProductId,
+                        ColorId = command.ColorId,
                         Quantity = command.Quantity
                     };
                     await _unitOfWork.CartRepository.AddNewCartAsync(newCart);
@@ -58,7 +59,7 @@ namespace Application.Features.Carts.Commands
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding item to cart. CustomerId: {CustomerId}, ProductId: {ProductId}", command.CustomerId, command.ProductId);
+                _logger.LogError(ex, "Error adding item to cart. CustomerId: {CustomerId}, ColorId: {ColorId}", command.CustomerId, command.ColorId);
                 return Result.Failure("An internal error occurred while processing your request.", 500);
             }
         }

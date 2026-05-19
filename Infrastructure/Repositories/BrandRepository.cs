@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories
 {
     public class BrandRepository : IBrandRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public BrandRepository(EcommerceOrderSystemContext context)
+        public BrandRepository(EcommerceContext context)
         {
             _context = context;
         }

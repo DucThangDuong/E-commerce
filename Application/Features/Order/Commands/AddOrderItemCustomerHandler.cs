@@ -26,34 +26,34 @@ namespace Application.Features.Order.Commands
         }
         public async Task<Result<string>> Handle(AddOrderItemCustomerCommand request, CancellationToken ct)
         {
-            List<int> productIds = request.Items.Keys.ToList();
+            List<int> colorIds = request.Items.Keys.ToList();
 
             var stockMap = new Dictionary<int, int>();
-            var missingProductIds = new List<int>();
+            var missingColorIds = new List<int>();
 
-            var redisKeys = productIds.Select(id => (RedisKey)$"Product:Stock:{id}").ToArray();
+            var redisKeys = colorIds.Select(id => (RedisKey)$"Color:Stock:{id}").ToArray();
             var redisValues = await _redisConnection.StringGetAsync(redisKeys);
 
-            for (int i = 0; i < productIds.Count; i++)
+            for (int i = 0; i < colorIds.Count; i++)
             {
                 if (redisValues[i].HasValue && int.TryParse(redisValues[i], out int redisStock))
                 {
-                    stockMap[productIds[i]] = redisStock;
+                    stockMap[colorIds[i]] = redisStock;
                 }
                 else
                 {
-                    missingProductIds.Add(productIds[i]);
+                    missingColorIds.Add(colorIds[i]);
                 }
             }
 
-            if (missingProductIds.Any())
+            if (missingColorIds.Any())
             {
-                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByProductIdsAsync(missingProductIds, ct);
-                foreach (var id in missingProductIds)
+                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(missingColorIds, ct);
+                foreach (var id in missingColorIds)
                 {
                     int dbStock = dbStockMap.ContainsKey(id) ? dbStockMap[id] : 0;
                     stockMap[id] = dbStock;
-                    await _redisConnection.StringSetAsync($"Product:Stock:{id}", dbStock, TimeSpan.FromDays(1));
+                    await _redisConnection.StringSetAsync($"Color:Stock:{id}", dbStock, TimeSpan.FromDays(1));
                 }
             }
 
@@ -77,7 +77,7 @@ namespace Application.Features.Order.Commands
                 // Trừ để giữ chỗ trong Redis trước
                 foreach (var item in request.Items)
                 {
-                    string cacheKeyStock = $"Product:Stock:{item.Key}";
+                    string cacheKeyStock = $"Color:Stock:{item.Key}";
                     await _redisConnection.StringDecrementAsync(cacheKeyStock, item.Value);
                 }
                 // Lưu reservation vào Redis (CustomerId + Items)
@@ -103,7 +103,7 @@ namespace Application.Features.Order.Commands
                 // Hoàn trả stock trong Redis nếu có lỗi
                 foreach (var item in request.Items)
                 {
-                    string cacheKeyStock = $"Product:Stock:{item.Key}";
+                    string cacheKeyStock = $"Color:Stock:{item.Key}";
                     await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
                 }
                 throw;

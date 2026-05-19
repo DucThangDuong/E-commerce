@@ -12,8 +12,8 @@ namespace Infrastructure.Repositories
 {
     public class OrderRepository : IOrderRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
-        public OrderRepository(EcommerceOrderSystemContext context) { 
+        private readonly EcommerceContext _context;
+        public OrderRepository(EcommerceContext context) { 
             _context = context;
         }
 
@@ -25,7 +25,7 @@ namespace Infrastructure.Repositories
         public async Task<Order?> GetByIdAsync(int orderId)
         {
             return await _context.Orders
-                .Include(e => e.Payments)
+                .Include(e => e.Payment)
                 .FirstOrDefaultAsync(e => e.OrderId == orderId);
         }
 

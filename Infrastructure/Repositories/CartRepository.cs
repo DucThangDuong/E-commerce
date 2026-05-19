@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories
 {
     public class CartRepository : ICartRepository
     {
-        private readonly EcommerceOrderSystemContext _context;
+        private readonly EcommerceContext _context;
 
-        public CartRepository(EcommerceOrderSystemContext context)
+        public CartRepository(EcommerceContext context)
         {
             _context = context;
         }
@@ -20,25 +20,26 @@ namespace Infrastructure.Repositories
             return true;
         }
 
-        public async Task<bool> DeleteCartAsync(int customerId, int productId)
+        public async Task<bool> DeleteCartAsync(int customerId, int colorId)
         {
             var deleted = await _context.Carts
-                .Where(e => e.ProductId == productId && e.CustomerId == customerId)
+                .Where(e => e.ColorId == colorId && e.CustomerId == customerId)
                 .ExecuteDeleteAsync();
             return deleted > 0;
         }
 
-        public async Task<bool> DeleteCartItemsAsync(int customerId, List<int> productIds, CancellationToken ct = default)
+        public async Task<bool> DeleteCartItemsAsync(int customerId, List<int> colorIds, CancellationToken ct = default)
         {
             var deleted = await _context.Carts
-                .Where(e => e.CustomerId == customerId && productIds.Contains(e.ProductId))
+                .Where(e => e.CustomerId == customerId && colorIds.Contains(e.ColorId))
                 .ExecuteDeleteAsync(ct);
             return deleted > 0;
         }
 
-        public async Task<Cart?> GetCartAsync(int customerId, int productId)
+        public async Task<Cart?> GetCartAsync(int customerId, int colorId)
         {
-            return await _context.Carts.FirstOrDefaultAsync(c => c.CustomerId == customerId && c.ProductId == productId);
+            return await _context.Carts
+                .FirstOrDefaultAsync(c => c.CustomerId == customerId && c.ColorId == colorId);
         }
 
 

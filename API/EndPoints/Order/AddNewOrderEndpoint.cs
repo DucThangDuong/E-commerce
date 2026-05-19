@@ -27,13 +27,13 @@ namespace API.EndPoints.Order
             int userId = HttpContext.User.GetUserId();
             foreach (var item in req.Items)
             {
-                if (items.ContainsKey(item.ProductId))
+                if (items.ContainsKey(item.ColorId))
                 {
-                    items[item.ProductId] += item.Quantity;
+                    items[item.ColorId] += item.Quantity;
                 }
                 else
                 {
-                    items.Add(item.ProductId, item.Quantity);
+                    items.Add(item.ColorId, item.Quantity);
                 }
             }
             var result = await Mediator.Send(new AddOrderItemCustomerCommand(userId, items), ct);

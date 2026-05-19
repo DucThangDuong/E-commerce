@@ -20,24 +20,26 @@ namespace Application.Features.Order.Queries
         {
             var orders = await _db.Orders
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Where(e => e.CustomerId == request.CustomerId)
                 .Select(e => new ResOrder
                 {
                     Address = e.OrderShippingDetail != null ? e.OrderShippingDetail.StreetAddress : "",
                     PhoneNumber = e.OrderShippingDetail != null ? e.OrderShippingDetail.RecipientPhone : null,
                     OrderId = e.OrderId,
-                    OrderDate = e.CreatedAt,
+                    OrderDate = e.OrderDate,
                     TotalAmount = e.TotalAmount,
                     Status = e.Status,
-                    PaymentStatus = e.Payments != null && e.Payments.Any(ff => ff.OrderId == e.OrderId)
-                        ? e.Payments.FirstOrDefault(ff => ff.OrderId == e.OrderId)!.PaymentStatus : "",
+                    PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "",
                     OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
                     {
-                        name = oi.Product.Name,
+                        name = oi.Color.Product.Name,
+                        ColorId = oi.ColorId,
+                        ColorName = oi.Color.ColorName,
                         quantity = oi.Quantity,
                         unitPriceAtPurchase = oi.UnitPriceAtPurchase,
-                        basePrice = oi.Product.BasePrice,
-                        imageUrl = oi.Product.ProductImages.Select(pi => pi.ImageUrl).ToList()
+                        basePrice = oi.Color.Product.BasePrice,
+                        imageUrl = oi.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == oi.ColorId).Select(pi => pi.ImageUrl).ToList()
                     }).ToList()
                 })
                 .OrderByDescending(e => e.OrderDate)
