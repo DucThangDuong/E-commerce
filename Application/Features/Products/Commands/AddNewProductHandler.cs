@@ -20,11 +20,9 @@ namespace Application.Features.Products.Commands
     public class AddNewProductHandler : IRequestHandler<AddNewProductCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IStorageService _storageService;
-        public AddNewProductHandler(IUnitOfWork unitOfWork, IStorageService storageService)
+        public AddNewProductHandler(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
-            _storageService = storageService;
         }
 
         public async Task<Result> Handle(AddNewProductCommand command, CancellationToken ct)
@@ -43,8 +41,6 @@ namespace Application.Features.Products.Commands
                     foreach (var image in command.Images)
                     {
                         var fileName = Guid.NewGuid().ToString() + Path.GetExtension(image.FileName);
-                        var url = await _storageService.UploadFileAsync(image.Stream, fileName, image.ContentType, StorageType.product);
-                        imageUrls.Add(url);
                     }
                 }
 

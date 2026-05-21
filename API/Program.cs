@@ -93,7 +93,10 @@ namespace API
             var redisConnectionString = builder.Configuration["RedisCache"] ?? "localhost:6379";
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
-                return ConnectionMultiplexer.Connect(redisConnectionString);
+                var configuration = ConfigurationOptions.Parse(redisConnectionString, true);
+                configuration.AbortOnConnectFail = false;
+                configuration.ConnectRetry = 5;
+                return ConnectionMultiplexer.Connect(configuration);
             });
             builder.Services.AddSingleton<ICacheService, CacheService>();
 
@@ -229,21 +232,7 @@ namespace API
             builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
             builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceContext>());
 
-            // Storage (MinIO / S3)
-            var storageConfig = builder.Configuration.GetSection("Storage");
-            builder.Services.AddSingleton<IAmazonS3>(sp =>
-            {
-                var config = new AmazonS3Config
-                {
-                    ServiceURL = storageConfig["ServiceUrl"],
-                    ForcePathStyle = true
-                };
-                return new AmazonS3Client(
-                    storageConfig["AccessKey"],
-                    storageConfig["SecretKey"], config);
-            });
             builder.Services.AddScoped<IBlobService, AzureBlobService>();
-            builder.Services.AddSingleton<IStorageService, S3StorageService>();
             //hub
             builder.Services.AddSignalR();
             builder.Services.AddHttpContextAccessor();
