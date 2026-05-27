@@ -3,27 +3,31 @@ using Application.DTOs.Response;
 using Application.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Application.Features.Order.Queries
 {
-    public record GetOrderOfCustomerQuery(int CustomerId) : IRequest<Result<List<ResOrder>>>;
-    public class GetOrderOfCustomerHandler : IRequestHandler<GetOrderOfCustomerQuery, Result<List<ResOrder>>>
+    public record GetOrderDetailQuery(int CustomerId, int OrderId) : IRequest<Result<ResOrder>>;
+
+    public class GetOrderDetailHandler : IRequestHandler<GetOrderDetailQuery, Result<ResOrder>>
     {
         private readonly IAppReadDbContext _db;
 
-        public GetOrderOfCustomerHandler(IAppReadDbContext db)
+        public GetOrderDetailHandler(IAppReadDbContext db)
         {
             _db = db;
         }
 
-        public async Task<Result<List<ResOrder>>> Handle(GetOrderOfCustomerQuery request, CancellationToken cancellationToken)
+        public async Task<Result<ResOrder>> Handle(GetOrderDetailQuery request, CancellationToken cancellationToken)
         {
             try
             {
-                var orders = await _db.Orders
+                var order = await _db.Orders
                     .AsNoTracking()
                     .AsSplitQuery()
-                    .Where(e => e.CustomerId == request.CustomerId)
+                    .Where(e => e.CustomerId == request.CustomerId && e.OrderId == request.OrderId)
                     .Select(e => new ResOrder
                     {
                         Address = e.OrderShippingDetail != null ? e.OrderShippingDetail.StreetAddress : "",
@@ -36,6 +40,7 @@ namespace Application.Features.Order.Queries
                         DiscountAmount = e.DiscountAmount,
                         Status = e.Status,
                         PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "",
+                        TotalItems= e.OrderItems.Sum(oi => oi.Quantity),
                         OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
                         {
                             name = oi.Color.Product.Name,
@@ -47,13 +52,18 @@ namespace Application.Features.Order.Queries
                             imageUrl = oi.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == oi.ColorId).Select(pi => pi.ImageUrl).ToList()
                         }).ToList()
                     })
-                    .OrderByDescending(e => e.OrderDate)
-                    .ToListAsync(cancellationToken);
-                return Result<List<ResOrder>>.Success(orders);
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (order == null)
+                {
+                    return Result<ResOrder>.Failure("Order not found or you don't have access to it.", 404);
+                }
+
+                return Result<ResOrder>.Success(order);
             }
-            catch (Exception ex)
+            catch (System.Exception)
             {
-                return Result<List<ResOrder>>.Failure("An internal error occurred while fetching orders.", 500);
+                return Result<ResOrder>.Failure("An internal error occurred while fetching the order detail.", 500);
             }
         }
     }

@@ -2,9 +2,9 @@ name: .NET Core CI/CD
 
 on:
   push:
-    branches: [ master, ci/cd ]
+    branches: [ master]
   pull_request:
-    branches: [ master, ci/cd ]
+    branches: [ master]
 
 jobs:
   build_and_test:
@@ -111,9 +111,6 @@ jobs:
           key: ${{ secrets.AZURE_VM_KEY }}
           script: |
             cd ~/app/ecommerce
-
             docker compose pull api
-
             docker compose up -d --remove-orphans api
-
             docker image prune -f

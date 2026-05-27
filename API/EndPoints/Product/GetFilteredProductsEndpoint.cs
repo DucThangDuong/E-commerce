@@ -19,7 +19,7 @@ namespace API.EndPoints.Product
 
         public override void Configure()
         {
-            Post("/product/filter");
+            Get("/product/filter");
             AllowAnonymous();
             Options(x => x.RequireRateLimiting("search_strict"));
         }

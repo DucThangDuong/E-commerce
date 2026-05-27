@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Domain.Entities;
@@ -10,6 +10,7 @@ public partial class Order
     public int CustomerId { get; set; }
 
     public DateTime? OrderDate { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 
     public int? CouponId { get; set; }
 

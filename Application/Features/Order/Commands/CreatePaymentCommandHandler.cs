@@ -151,7 +151,7 @@ namespace Application.Features.Order.Commands
             catch (Exception ex)
             {
                 await _redisConnection.KeyDeleteAsync(idempotencyKey);
-                return Result<string>.Failure(ex.Message, 500);
+                return Result<string>.Failure("An internal error occurred while processing the payment.", 500);
             }
         }
     }

@@ -4,11 +4,15 @@ namespace Application.DTOs.Response
     {
         public int OrderId { get; set; }
         public DateTime? OrderDate { get; set; }
+        public DateTime? UpdatedAt { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal OriginalAmount { get; set; }
+        public decimal? DiscountAmount { get; set; }
         public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
+        public int TotalItems { get; set; }
         public List<ResOrderWithItems> OrderItems { get; set; } = new List<ResOrderWithItems>();
     }
     public class ResOrderWithItems

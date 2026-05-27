@@ -68,6 +68,11 @@ TestResults/
 # Entity Framework Migrations snapshot
 *MigrationsSnapshot.cs
 
+# AI Agents & Antigravity temporary files
+.agents/cache/
+.agents/logs/
+.agents/*.local.json
+
 # Sensitive configuration
 appsettings.Development.json
 appsettings.Local.json

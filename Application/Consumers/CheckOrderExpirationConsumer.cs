@@ -23,11 +23,9 @@ namespace Application.Consumers
 
             if (!reservationValue.HasValue)
             {
-                // Reservation đã được xử lý (đã thanh toán) hoặc đã hết hạn tự động
                 return;
             }
 
-            // Reservation vẫn còn → chưa thanh toán → hoàn trả stock trong Redis
             var reservationData = JsonSerializer.Deserialize<JsonElement>(reservationValue!);
             var itemsElement = reservationData.GetProperty("Items");
             var items = JsonSerializer.Deserialize<Dictionary<int, int>>(itemsElement.GetRawText());

@@ -214,7 +214,7 @@ namespace API
 
             // Email
             builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
-            builder.Services.AddScoped<IEmailSender, MailSender>();
+            builder.Services.AddSingleton<IEmailSender, MailSender>();
             builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             builder.Services.AddScoped<INotificationService, NotificationService>();
             builder.Services.AddScoped<IVnPayService, VnPayService>();

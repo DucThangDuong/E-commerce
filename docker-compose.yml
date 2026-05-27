@@ -1,11 +1,10 @@
 version: '3.8'
-
 services:
   api:
     image: ${DOCKER_USERNAME:-suminobraa}/ecommerce-api:latest
     container_name: ecommerce_api
     ports:
-      - "8080:80" 
+      - "8080:8080" 
     environment:
       - ASPNETCORE_ENVIRONMENT=Production 
       - ConnectionStrings__AZURE_SQL_CONNECTIONSTRING=${AZURE_SQL_CONNECTIONSTRING}

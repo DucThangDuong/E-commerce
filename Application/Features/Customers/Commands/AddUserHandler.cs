@@ -41,7 +41,7 @@ namespace Application.Features.Customers.Commands
             }
             catch (Exception ex)
             {
-                return Result.Failure("Lỗi server: " + ex.Message, 500);
+                return Result.Failure("Đã xảy ra lỗi nội bộ trong quá trình đăng ký.", 500);
             }
         }
     }
