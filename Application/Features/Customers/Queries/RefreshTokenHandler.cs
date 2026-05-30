@@ -43,7 +43,7 @@ namespace Application.Features.Customers.Queries
                     return Result<LoginResponse>.Failure("Token không hợp lệ.", 401);
                 }
 
-                var newAccessToken = _jwtTokenService.GenerateAccessToken(userId, "User");
+                var newAccessToken = _jwtTokenService.GenerateAccessToken(userId, Domain.Enums.UserRole.User.ToString());
                 var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
                 await _redisConnection.KeyDeleteAsync(redisKey);
                 await _redisConnection.StringSetAsync(redisKey, newRefreshToken.Token, TimeSpan.FromDays(7));

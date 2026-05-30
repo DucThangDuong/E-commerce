@@ -1,0 +1,32 @@
+người dùng thực hiện tạo đơn hàng: phương thức post /order/create-payment
++ kiểm tra đầu vào: 
+++ kiểm tra "Idempotency key" trên redis, nếu như đã có 
+(có nghĩa là người dùng đang thực hiện thanh toán trùng lặp 1 đơn hàng) 
+-> trả về kết quả (đang trong tiến trình hoặc kết quả của lần thanh toán trước)
+++ Người dùng truyền vào ReservationID (mã giữ hàng cho người dùng trước đó), các thông tin của người dùng
+
++ Thực hiện :
+++ nếu như đây là đơn hàng mới thì đưa và redis với trạng thái đang xử lý đơn hàng này 
+(tồn tại 15 phút )-> Nếu quá thời gian đó thì đưa vào message queue để để đưa đơn hàng này vào trạng thái "Cancelled"
+++ Lấy ra mã ReservationID người dùng truyền vào là lấy ra thông tin đơn hàng đã giữ trên redis (mã đơn hàng, số lượng)
+++ Lấy ra giá trị "Giá" sản phẩm tại thời điểm hiện tại và bắt đầu tính tổng tiền của đơn hàng
+++ Bắt đầu tạo đơn hàng với thông tin (địa chỉ,sdt) người dùng truyền vào với thông tin sản phẩm 
+++ Đơn hàng được đưa vào trạng thái "Pending" (chờ xử lý )
+++ Tạo hóa đơn cho đơn hàng vừa tạo với trạng thái "Pending"
+++ Xóa lượng sản phẩm trên db
+++ Xóa reservation giữ chỗ trên redis 
+++ Nếu đơn hàng là COD thì để thể loại là "COD" và trả về kết quả cho khách hàng
+++ Nếu đơn hàng là VNpay thì tạo url thanh toán cho người dùng
+
+++ Sau 15 phút mà người dùng không thanh toán thì đưa đơn hàng này vào trạng thái "Cancelled" từ message queue
+++ Sau khi thanh toán thành công thì bên vnpay sẽ gọi đến ipn endpoint để cập nhật hóa đơn
+++ Nó sẽ kiểm tra lại chữ ký để để đảm bảo giao dịch là an toàn
+++ Sau đó sẽ kiểm tra mã đơn hàng có trong db không
+++ Kiểm tra lại trạng thái của đơn hàng hoặc hóa đơn đã thanh toán chưa để tránh thanh toán trùng
+++ Sau đó sẽ kiểm tra số tiền có trong db có giống với số tiền thanh toán không 
+++ Nếu như giống thì sẽ cập nhật trạng thái đơn hàng thành "Confirmed" và hóa đơn thành "Paid"
+-> lưu vết lại TransactionId 
+++ Nếu như không giống thì sẽ cập nhật trạng thái đơn hàng thành "Failed" và hóa đơn thành "Fail"
++++ Trường hợp số tiền ít hơn tiền trong đơn hàng -> cập nhật hóa đơn và đơn hàng , ghi lại tiền khách đã chuyển khoản nhầm
+-> gửi mail cho khách hàng 
++++ Trường hợp tiền lớn hơn thì thực hiện thành công và gọi lại vnpay để trả tiền thừa cho khách hàng

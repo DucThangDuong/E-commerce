@@ -19,6 +19,15 @@ namespace Application.Consumers
         {
             string reservationId = context.Message.ReservationId;
             string reservationKey = $"Order:Reservation:{reservationId}";
+            string reservationLockKey = $"Order:ReservationLock:{reservationId}";
+            var isLocked = await _redisConnection.StringGetAsync(reservationLockKey);
+            
+            if (isLocked.HasValue)
+            {
+                await context.Publish(context.Message, ctx => ctx.Delay = TimeSpan.FromMinutes(1));
+                return; 
+            }
+
             var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
 
             if (!reservationValue.HasValue)

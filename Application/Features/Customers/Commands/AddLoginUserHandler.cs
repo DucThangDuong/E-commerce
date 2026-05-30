@@ -39,10 +39,10 @@ namespace Application.Features.Customers.Commands
             }
             try
             {
-                string role = userEntity.Role ?? "User";
+                string role = userEntity.Role ?? Domain.Enums.UserRole.User.ToString();
                 var accessToken = _jwtTokenService.GenerateAccessToken(userEntity.CustomerId, role);
                 var refreshToken = _jwtTokenService.GenerateRefreshToken();
-                userEntity.LoginProvider = "Custom";
+                userEntity.LoginProvider = Domain.Enums.LoginProvider.Custom.ToString();
 
                 await _publishEndpoint.Publish(new SendMail(command.Email!,
                     "Đăng nhập thành công", $"Bạn đã đăng nhập thành công vào tài khoản của mình vào lúc {DateTime.UtcNow}. " +

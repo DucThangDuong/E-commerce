@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,16 +6,52 @@ using System.Threading.Tasks;
 
 namespace Domain.Enums
 {
-    public enum Payment_status
+    public enum PaymentStatus
     {
-        Failed = -1,   //  Thất bại
+        Fail = -1,     // Thất bại (Lỗi thanh toán, sai số tiền)
         Pending = 0,   // Đang chờ xử lý
-        Success = 1     // Thành công
+        Paid = 1,      // Thành công (Đã thanh toán)
+        Unpaid = 2     // Chưa thanh toán (COD)
     }
-    public enum Order_status
+
+    public enum OrderStatus
     {
         Cancelled = -1,   // Đã hủy
+        Failed = -2,      // Bị lỗi (Vd: Thanh toán thất bại)
         Pending = 0,      // Đang chờ xử lý
-        Completed = 1     // Hoàn thành
+        Confirmed = 1,    // Đã xác nhận / Chuẩn bị hàng
+        Shipping = 2,     // Đang giao hàng
+        Completed = 3     // Hoàn thành
+    }
+
+    public enum Gender
+    {
+        Female = 0,  // Nữ
+        Male = 1,    // Nam
+        Other = 2    // Khác
+    }
+
+    public enum UserRole
+    {
+        User = 0,    // Khách hàng
+        Admin = 1    // Quản trị viên
+    }
+
+    public enum PaymentProvider
+    {
+        COD = 0,     // Thanh toán khi nhận hàng
+        VnPay = 1    // Thanh toán qua cổng VNPay
+    }
+
+    public enum DiscountType
+    {
+        FixedAmount = 0, // Giảm theo số tiền cố định
+        Percentage = 1   // Giảm theo phần trăm
+    }
+
+    public enum LoginProvider
+    {
+        Custom = 0,  // Đăng nhập truyền thống (Email/Password)
+        Google = 1   // Đăng nhập qua Google
     }
 }

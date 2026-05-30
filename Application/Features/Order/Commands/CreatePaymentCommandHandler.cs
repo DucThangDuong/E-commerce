@@ -40,14 +40,20 @@ namespace Application.Features.Order.Commands
                 }
                 return Result<string>.Success(cachedResponse!, 200);
             }
-            bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(2), When.NotExists);
+            bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(15), When.NotExists);
             if (!lockAcquired)
             {
                 return Result<string>.Failure("Giao dịch đang được xử lý.", 409);
             }
+            string reservationLockKey = $"Order:ReservationLock:{request.ReservationId}";
+            bool resLockAcquired = await _redisConnection.StringSetAsync(reservationLockKey, "PROCESSING", TimeSpan.FromMinutes(2), When.NotExists);
+            if (!resLockAcquired)
+            {
+                return Result<string>.Failure("Đơn hàng đang được xử lý thanh toán.", 409);
+            }
+
             try
             {
-                // 1. Đọc reservation từ Redis
                 string reservationKey = $"Order:Reservation:{request.ReservationId}";
                 var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
                 if (!reservationValue.HasValue)
@@ -65,11 +71,9 @@ namespace Application.Features.Order.Commands
                     return Result<string>.Failure("Reservation data is invalid.", 400);
                 }
 
-                // 2. Lấy giá sản phẩm từ DB
                 List<int> colorIds = reservedItems.Keys.ToList();
                 Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, cancellationToken);
 
-                // 3. Tạo OrderItems + tính tổng tiền
                 var orderItems = new List<OrderItem>();
                 decimal totalAmount = 0;
 
@@ -93,17 +97,15 @@ namespace Application.Features.Order.Commands
                     totalAmount += unitPrice * quantity;
                 }
 
-                // 4. Tạo Order
                 var newOrder = new Domain.Entities.Order
                 {
                     CustomerId = customerId,
                     OrderDate = DateTime.UtcNow,
                     TotalAmount = totalAmount,
-                    Status = "Pending",
+                    Status = Domain.Enums.OrderStatus.Pending.ToString(),
                     OrderItems = orderItems,
                 };
 
-                // 5. Tạo OrderShippingDetail
                 var shippingDetail = new OrderShippingDetail
                 {
                     RecipientName = request.FullName,
@@ -112,29 +114,24 @@ namespace Application.Features.Order.Commands
                 };
                 newOrder.OrderShippingDetail = shippingDetail;
 
-                // 6. Tạo Payment
-                string provider = request.TypePayment == 0 ? "COD" : "VnPay";
+                string provider = request.TypePayment == 0 ? Domain.Enums.PaymentProvider.COD.ToString() : Domain.Enums.PaymentProvider.VnPay.ToString();
                 var newPayment = new Payment
                 {
                     Amount = totalAmount,
                     Provider = provider,
-                    PaymentStatus = "Pending",
+                    PaymentStatus = Domain.Enums.PaymentStatus.Pending.ToString(),
                     IdempotencyKey= request.idempotencyKey,
                 };
                 newOrder.Payment = newPayment;
 
-                // 7. Lưu Order 
                 await _unitOfWork.OrderRepository.AddAsync(newOrder);
 
-                // 8. Trừ stock trong DB
                 await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(reservedItems);
 
                 await _unitOfWork.SaveChangesAsync();
 
-                // 9. Xóa reservation khỏi Redis
                 await _redisConnection.KeyDeleteAsync(reservationKey);
 
-                // 10. Trả kết quả theo phương thức thanh toán
                 if (request.TypePayment == 0)
                 {
                     await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
@@ -152,6 +149,10 @@ namespace Application.Features.Order.Commands
             {
                 await _redisConnection.KeyDeleteAsync(idempotencyKey);
                 return Result<string>.Failure("An internal error occurred while processing the payment.", 500);
+            }
+            finally
+            {
+                await _redisConnection.KeyDeleteAsync(reservationLockKey);
             }
         }
     }

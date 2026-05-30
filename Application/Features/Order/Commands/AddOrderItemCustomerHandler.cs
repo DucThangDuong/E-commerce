@@ -27,7 +27,6 @@ namespace Application.Features.Order.Commands
         public async Task<Result<string>> Handle(AddOrderItemCustomerCommand request, CancellationToken ct)
         {
             List<int> colorIds = request.Items.Keys.ToList();
-
             var stockMap = new Dictionary<int, int>();
             var missingColorIds = new List<int>();
 
@@ -48,7 +47,8 @@ namespace Application.Features.Order.Commands
 
             if (missingColorIds.Any())
             {
-                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(missingColorIds, ct);
+                Dictionary<int,int> dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(missingColorIds, ct);
+                
                 foreach (var id in missingColorIds)
                 {
                     int dbStock = dbStockMap.ContainsKey(id) ? dbStockMap[id] : 0;
@@ -72,15 +72,28 @@ namespace Application.Features.Order.Commands
                 return Result<string>.Failure("Các sản phẩm không đủ tồn kho.", 400);
             }
 
+            var successItems = new Dictionary<int, int>();
+            
             try
             {
-                // Trừ để giữ chỗ trong Redis trước
                 foreach (var item in request.Items)
                 {
                     string cacheKeyStock = $"Color:Stock:{item.Key}";
-                    await _redisConnection.StringDecrementAsync(cacheKeyStock, item.Value);
+                    long newStock = await _redisConnection.StringDecrementAsync(cacheKeyStock, item.Value);
+                    if (newStock < 0)
+                    {
+                        await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
+                        
+                        foreach (var success in successItems)
+                        {
+                            await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
+                        }
+                        
+                        return Result<string>.Failure("Sản phẩm đã hết hàng do có người khác vừa mua.", 400);
+                    }
+                    successItems.Add(item.Key, item.Value);
                 }
-                // Lưu reservation vào Redis (CustomerId + Items)
+
                 string reservationId = Guid.NewGuid().ToString("N");
                 string reservationKey = $"Order:Reservation:{reservationId}";
                 var reservationData = new
@@ -88,9 +101,8 @@ namespace Application.Features.Order.Commands
                     CustomerId = request.CustomerId,
                     Items = request.Items
                 };
+                
                 await _redisConnection.StringSetAsync(reservationKey, JsonSerializer.Serialize(reservationData), TimeSpan.FromMinutes(15));
-
-                // Publish sự kiện hết hạn
                 await _publishEndpoint.Publish(new DTOs.Services.ReserveOrderEvent(reservationId), context =>
                 {
                     context.Delay = TimeSpan.FromMinutes(15);
@@ -100,11 +112,10 @@ namespace Application.Features.Order.Commands
             }
             catch (Exception)
             {
-                // Hoàn trả stock trong Redis nếu có lỗi
-                foreach (var item in request.Items)
+                foreach (var success in successItems)
                 {
-                    string cacheKeyStock = $"Color:Stock:{item.Key}";
-                    await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
+                    string cacheKeyStock = $"Color:Stock:{success.Key}";
+                    await _redisConnection.StringIncrementAsync(cacheKeyStock, success.Value);
                 }
                 throw;
             }
