@@ -1,54 +1,74 @@
 using Application.DTOs.Services;
 using Application.Interfaces;
+using Domain.Enums;
 using MassTransit;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
-using System.Text.Json;
 
 namespace Application.Consumers
 {
-    public class CheckOrderExpirationConsumer : IConsumer<ReserveOrderEvent>
+    public class CheckOrderExpirationConsumer : IConsumer<OrderTimeoutEvent>
     {
         private readonly IDatabase _redisConnection;
+        private readonly IUnitOfWork _unitOfWork;
+        private readonly IAppReadDbContext _db;
 
-        public CheckOrderExpirationConsumer(IConnectionMultiplexer multiplexer)
+        public CheckOrderExpirationConsumer(
+            IConnectionMultiplexer multiplexer,
+            IUnitOfWork unitOfWork,
+            IAppReadDbContext db)
         {
             _redisConnection = multiplexer.GetDatabase();
+            _unitOfWork = unitOfWork;
+            _db = db;
         }
 
-        public async Task Consume(ConsumeContext<ReserveOrderEvent> context)
+        public async Task Consume(ConsumeContext<OrderTimeoutEvent> context)
         {
-            string reservationId = context.Message.ReservationId;
-            string reservationKey = $"Order:Reservation:{reservationId}";
-            string reservationLockKey = $"Order:ReservationLock:{reservationId}";
-            var isLocked = await _redisConnection.StringGetAsync(reservationLockKey);
-            
-            if (isLocked.HasValue)
-            {
-                await context.Publish(context.Message, ctx => ctx.Delay = TimeSpan.FromMinutes(1));
-                return; 
-            }
+            int orderId = context.Message.OrderId;
 
-            var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
-
-            if (!reservationValue.HasValue)
+            var order = await _unitOfWork.OrderRepository.GetByIdAsync(orderId);
+            if (order == null)
             {
                 return;
             }
 
-            var reservationData = JsonSerializer.Deserialize<JsonElement>(reservationValue!);
-            var itemsElement = reservationData.GetProperty("Items");
-            var items = JsonSerializer.Deserialize<Dictionary<int, int>>(itemsElement.GetRawText());
-
-            if (items != null)
+            if (order.Status == OrderStatus.Confirmed.ToString() ||
+                order.Status == OrderStatus.Pending.ToString() ||
+                order.Status == OrderStatus.Shipping.ToString() ||
+                order.Status == OrderStatus.Completed.ToString())
             {
-                foreach (var item in items)
-                {
-                    string cacheKeyStock = $"Product:Stock:{item.Key}";
-                    await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
-                }
+                return;
             }
 
-            await _redisConnection.KeyDeleteAsync(reservationKey);
+            if (order.Status == OrderStatus.Cancelled.ToString() ||
+                order.Status == OrderStatus.Failed.ToString())
+            {
+                return;
+            }
+
+            if (order.Status == OrderStatus.Processing_Payment.ToString())
+            {
+                order.Status = OrderStatus.Cancelled.ToString();
+                order.UpdatedAt = DateTime.UtcNow;
+
+                if (order.Payment != null)
+                {
+                    order.Payment.PaymentStatus = PaymentStatus.Fail.ToString();
+                }
+
+                var orderItems = await _db.OrderItems
+                    .Where(oi => oi.OrderId == orderId)
+                    .ToListAsync();
+
+                foreach (var item in orderItems)
+                {
+                    string cacheKeyStock = $"Color:Stock:{item.ColorId}";
+                    await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Quantity);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+            }
         }
     }
 }

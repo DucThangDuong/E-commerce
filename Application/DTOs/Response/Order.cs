@@ -1,3 +1,5 @@
+using Application.Features.Order.Commands;
+
 namespace Application.DTOs.Response
 {
     public class ResOrder
@@ -24,5 +26,20 @@ namespace Application.DTOs.Response
         public string name { get; set; } = null!;
         public decimal basePrice { get; set; }
         public List<string> imageUrl { get; set; } = new List<string>();
+    }
+    public record CartItemRequest(int ColorId, int Quantity);
+    public record ValidateCartResponse
+    {
+        public decimal SubTotal { get; init; }
+        public List<ValidatedCartItem> Items { get; init; } = new();
+    }
+    public record CalculateOrderResponse
+    {
+        public decimal SubTotal { get; init; }
+        public decimal ShippingFee { get; init; }
+        public decimal DiscountAmount { get; init; }
+        public decimal FinalAmount { get; init; }
+        public int? CouponId { get; init; }
+        public string? CouponCode { get; init; }
     }
 }

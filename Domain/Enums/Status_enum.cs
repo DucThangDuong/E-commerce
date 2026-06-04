@@ -8,20 +8,22 @@ namespace Domain.Enums
 {
     public enum PaymentStatus
     {
-        Fail = -1,     // Thất bại (Lỗi thanh toán, sai số tiền)
-        Pending = 0,   // Đang chờ xử lý
-        Paid = 1,      // Thành công (Đã thanh toán)
-        Unpaid = 2     // Chưa thanh toán (COD)
+        Fail = -1,           // Thất bại (Lỗi thanh toán)
+        Payment_Mismatch = -2, // Sai số tiền thanh toán
+        Pending = 0,         // Đang chờ xử lý
+        Paid = 1,            // Thành công (Đã thanh toán)
+        Unpaid = 2           // Chưa thanh toán (COD)
     }
 
     public enum OrderStatus
     {
-        Cancelled = -1,   // Đã hủy
-        Failed = -2,      // Bị lỗi (Vd: Thanh toán thất bại)
-        Pending = 0,      // Đang chờ xử lý
-        Confirmed = 1,    // Đã xác nhận / Chuẩn bị hàng
-        Shipping = 2,     // Đang giao hàng
-        Completed = 3     // Hoàn thành
+        Cancelled = -1,          // Đã hủy
+        Failed = -2,             // Bị lỗi (Vd: Thanh toán thất bại)
+        Pending = 0,             // Đang chờ xử lý (COD)
+        Processing_Payment = 1,  // Đang chờ thanh toán online (VnPay)
+        Confirmed = 2,           // Đã xác nhận / Chuẩn bị hàng
+        Shipping = 3,            // Đang giao hàng
+        Completed = 4            // Hoàn thành
     }
 
     public enum Gender

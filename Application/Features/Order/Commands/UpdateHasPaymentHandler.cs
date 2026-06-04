@@ -45,7 +45,7 @@ namespace Application.Features.Order.Commands
                     order.Status = OrderStatus.Failed.ToString();
                     if (order.Payment != null)
                     {
-                        order.Payment.PaymentStatus = PaymentStatus.Fail.ToString();
+                        order.Payment.PaymentStatus = PaymentStatus.Payment_Mismatch.ToString();
                         order.Payment.ProviderTransactionId = request.TransactionNo;
                     }
                     
@@ -71,25 +71,23 @@ namespace Application.Features.Order.Commands
                 }
 
                 // 3. Kiểm tra xem đơn hàng đã được cập nhật trước đó chưa (Chống gọi IPN nhiều lần)
-                if (order.Status == OrderStatus.Confirmed.ToString() || order.Status == OrderStatus.Cancelled.ToString() || order.Status == OrderStatus.Failed.ToString())
+                if (order.Status == OrderStatus.Confirmed.ToString() || 
+                    order.Status == OrderStatus.Cancelled.ToString() || 
+                    order.Status == OrderStatus.Failed.ToString() ||
+                    order.Status == OrderStatus.Pending.ToString())
                 {
                     return Result<ResIpnDTO>.Failure("Order already processed", 400, new ResIpnDTO { RspCode = "02", Message = "Order already confirmed" });
                 }
 
-                // 4. Cập nhật trạng thái dựa vào vnp_ResponseCode
                 if (request.ResponseCode == "00")
                 {
-                    // Khách thanh toán thành công
-                    order.Status = OrderStatus.Confirmed.ToString(); // Hoặc trạng thái chuẩn bị giao hàng
-
-                    // Lưu vết giao dịch
+                    order.Status = OrderStatus.Confirmed.ToString(); 
                     if (order.Payment != null)
                     {
                         order.Payment.PaymentStatus = PaymentStatus.Paid.ToString();
                         order.Payment.ProviderTransactionId = request.TransactionNo;
                     }
 
-                    // Bắn SignalR báo khách hàng thanh toán thành công
                     await _notificationService.SendMessageToOrderId(
                         order.OrderId.ToString(), 
                         $"Thanh toán thành công đơn hàng #{order.OrderId}"
@@ -97,7 +95,6 @@ namespace Application.Features.Order.Commands
                 }
                 else
                 {
-                    // Khách hủy thanh toán hoặc thanh toán lỗi
                     if (order.Payment != null)
                     {
                         order.Payment.PaymentStatus = PaymentStatus.Fail.ToString();

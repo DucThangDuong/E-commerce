@@ -1,108 +1,180 @@
 using Application.Common;
 using Application.DTOs.Response;
+using Application.DTOs.Services;
 using Application.Interfaces;
 using Application.IServices;
 using Domain.Entities;
+using Domain.Enums;
+using MassTransit;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.Json;
-using System.Collections.Generic;
 
 namespace Application.Features.Order.Commands
 {
-    public record CreatePaymentCommand(string ReservationId, decimal Amount, string IpAddress, int TypePayment, string Address,
-        string PhoneNumber, string FullName, string idempotencyKey) : IRequest<Result<string>>;
+    public record CreatePaymentCommand(
+        List<CartItemRequest> Items,
+        string? CouponCode,
+        string IpAddress,
+        int TypePayment,
+        string Address,
+        string PhoneNumber,
+        string FullName,
+        string IdempotencyKey,
+        int CustomerId
+    ) : IRequest<Result<CreatePaymentResponse>>;
 
-    public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, Result<string>>
+
+    public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand, Result<CreatePaymentResponse>>
     {
         private readonly IVnPayService _vnPayService;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IDatabase _redisConnection;
-        public CreatePaymentCommandHandler(IVnPayService vnPayService, IUnitOfWork unitOfWork, IConnectionMultiplexer connectionMultiplexer)
+        private readonly IMediator _mediator;
+        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IAppReadDbContext _db;
+
+        public CreatePaymentCommandHandler(
+            IVnPayService vnPayService,
+            IUnitOfWork unitOfWork,
+            IConnectionMultiplexer connectionMultiplexer,
+            IMediator mediator,
+            IPublishEndpoint publishEndpoint,
+            IAppReadDbContext db)
         {
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
             _redisConnection = connectionMultiplexer.GetDatabase();
+            _mediator = mediator;
+            _publishEndpoint = publishEndpoint;
+            _db = db;
         }
 
-        public async Task<Result<string>> Handle(CreatePaymentCommand request, CancellationToken cancellationToken)
+        public async Task<Result<CreatePaymentResponse>> Handle(CreatePaymentCommand request, CancellationToken ct)
         {
-            string idempotencyKey = $"Idempotency:Payment:{request.idempotencyKey}";
+            string idempotencyKey = $"Idempotency:Payment:{request.IdempotencyKey}";
             var cachedResponse = await _redisConnection.StringGetAsync(idempotencyKey);
             if (cachedResponse.HasValue)
             {
                 if (cachedResponse == "PROCESSING")
                 {
-                    return Result<string>.Failure("Giao dịch đang được xử lý. Vui lòng không gửi lại.", 409);
+                    return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý. Vui lòng không gửi lại.", 409);
                 }
-                return Result<string>.Success(cachedResponse!, 200);
+                var cached = JsonSerializer.Deserialize<CreatePaymentResponse>(cachedResponse!);
+                return Result<CreatePaymentResponse>.Success(cached!, 200);
             }
+
             bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(15), When.NotExists);
             if (!lockAcquired)
             {
-                return Result<string>.Failure("Giao dịch đang được xử lý.", 409);
+                return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý.", 409);
             }
-            string reservationLockKey = $"Order:ReservationLock:{request.ReservationId}";
-            bool resLockAcquired = await _redisConnection.StringSetAsync(reservationLockKey, "PROCESSING", TimeSpan.FromMinutes(2), When.NotExists);
-            if (!resLockAcquired)
+
+            var itemUserWantBuy = new Dictionary<int, int>();
+            foreach (var item in request.Items)
             {
-                return Result<string>.Failure("Đơn hàng đang được xử lý thanh toán.", 409);
+                if (itemUserWantBuy.ContainsKey(item.ColorId))
+                {
+                    itemUserWantBuy[item.ColorId] += item.Quantity;
+                }
+                else
+                {
+                    itemUserWantBuy[item.ColorId] = item.Quantity;
+                }
             }
+
+            int customerId = request.CustomerId;
+            var successItems = new Dictionary<int, int>();
 
             try
             {
-                string reservationKey = $"Order:Reservation:{request.ReservationId}";
-                var reservationValue = await _redisConnection.StringGetAsync(reservationKey);
-                if (!reservationValue.HasValue)
+                foreach (var item in itemUserWantBuy)
                 {
-                    return Result<string>.Failure("No reservation found for this order.", 404);
+                    string cacheKeyStock = $"Color:Stock:{item.Key}";
+
+                    var exists = await _redisConnection.KeyExistsAsync(cacheKeyStock);
+                    if (!exists)
+                    {
+                        var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { item.Key }, ct);
+                        int dbStock = dbStockMap.ContainsKey(item.Key) ? dbStockMap[item.Key] : 0;
+                        await _redisConnection.StringSetAsync(cacheKeyStock, dbStock, TimeSpan.FromDays(1));
+                    }
+
+                    long newStock = await _redisConnection.StringDecrementAsync(cacheKeyStock, item.Value);
+
+                    if (newStock < 0)
+                    {
+                        await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Value);
+
+                        foreach (var success in successItems)
+                        {
+                            await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
+                        }
+
+                        return Result<CreatePaymentResponse>.Failure("Sản phẩm đã hết hàng do có người khác vừa mua.", 400);
+                    }
+
+                    successItems.Add(item.Key, item.Value);
                 }
 
-                var reservationData = JsonSerializer.Deserialize<JsonElement>(reservationValue!);
-                int customerId = reservationData.GetProperty("CustomerId").GetInt32();
-                var itemsElement = reservationData.GetProperty("Items");
-                var reservedItems = JsonSerializer.Deserialize<Dictionary<int, int>>(itemsElement.GetRawText());
-
-                if (reservedItems == null || !reservedItems.Any())
+                var calculateResult = await _mediator.Send(new CalculateOrderCommand(request.Items, request.CouponCode, customerId), ct);
+                if (!calculateResult.IsSuccess)
                 {
-                    return Result<string>.Failure("Reservation data is invalid.", 400);
+                    foreach (var success in successItems)
+                    {
+                        await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
+                    }
+                    return Result<CreatePaymentResponse>.Failure(calculateResult.ErrorCode ?? "Lỗi tính toán đơn hàng.", 400);
                 }
 
-                List<int> colorIds = reservedItems.Keys.ToList();
-                Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, cancellationToken);
+                var priceInfo = calculateResult.Data!;
+
+                // ============ BƯỚC 3: LẤY GIÁ VÀ TẠO ORDER ITEMS ============
+                List<int> colorIds = itemUserWantBuy.Keys.ToList();
+                Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
                 var orderItems = new List<OrderItem>();
-                decimal totalAmount = 0;
-
-                foreach (var item in reservedItems)
+                foreach (var item in itemUserWantBuy)
                 {
-                    int colorId = item.Key;
-                    int quantity = item.Value;
-
-                    if (!colorPrices.TryGetValue(colorId, out decimal unitPrice))
+                    if (!colorPrices.TryGetValue(item.Key, out decimal unitPrice))
                     {
-                        return Result<string>.Failure($"Màu sản phẩm ID {colorId} không có thông tin giá hợp lệ.");
+                        foreach (var success in successItems)
+                        {
+                            await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
+                        }
+                        return Result<CreatePaymentResponse>.Failure($"Sản phẩm màu ID {item.Key} không có thông tin giá hợp lệ.", 400);
                     }
 
                     orderItems.Add(new OrderItem
                     {
-                        ColorId = colorId,
-                        Quantity = quantity,
+                        ColorId = item.Key,
+                        Quantity = item.Value,
                         UnitPriceAtPurchase = unitPrice
                     });
-
-                    totalAmount += unitPrice * quantity;
                 }
+
+                // ============ BƯỚC 4: XÁC ĐỊNH TRẠNG THÁI ĐƠN HÀNG ============
+                string orderStatus = request.TypePayment == 0
+                    ? OrderStatus.Pending.ToString()
+                    : OrderStatus.Processing_Payment.ToString();
+
+                string paymentStatus = request.TypePayment == 0
+                    ? PaymentStatus.Unpaid.ToString()
+                    : PaymentStatus.Pending.ToString();
+
+                string provider = request.TypePayment == 0
+                    ? PaymentProvider.COD.ToString()
+                    : PaymentProvider.VnPay.ToString();
 
                 var newOrder = new Domain.Entities.Order
                 {
                     CustomerId = customerId,
                     OrderDate = DateTime.UtcNow,
-                    TotalAmount = totalAmount,
-                    Status = Domain.Enums.OrderStatus.Pending.ToString(),
+                    TotalAmount = priceInfo.FinalAmount,
+                    DiscountAmount = priceInfo.DiscountAmount > 0 ? priceInfo.DiscountAmount : null,
+                    CouponId = priceInfo.CouponId,
+                    Status = orderStatus,
                     OrderItems = orderItems,
                 };
 
@@ -114,45 +186,80 @@ namespace Application.Features.Order.Commands
                 };
                 newOrder.OrderShippingDetail = shippingDetail;
 
-                string provider = request.TypePayment == 0 ? Domain.Enums.PaymentProvider.COD.ToString() : Domain.Enums.PaymentProvider.VnPay.ToString();
                 var newPayment = new Payment
                 {
-                    Amount = totalAmount,
+                    Amount = priceInfo.FinalAmount,
                     Provider = provider,
-                    PaymentStatus = Domain.Enums.PaymentStatus.Pending.ToString(),
-                    IdempotencyKey= request.idempotencyKey,
+                    PaymentStatus = paymentStatus,
+                    IdempotencyKey = request.IdempotencyKey,
                 };
                 newOrder.Payment = newPayment;
 
                 await _unitOfWork.OrderRepository.AddAsync(newOrder);
+                await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(itemUserWantBuy);
+                await _unitOfWork.SaveChangesAsync(ct);
 
-                await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(reservedItems);
-
-                await _unitOfWork.SaveChangesAsync();
-
-                await _redisConnection.KeyDeleteAsync(reservationKey);
-
-                if (request.TypePayment == 0)
+                // Ghi nhận CouponUsage nếu có
+                if (priceInfo.CouponId.HasValue)
                 {
-                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
-                    return Result<string>.Success("Payment created successfully with COD method.", 201);
+                    var couponUsage = new CouponUsage
+                    {
+                        CouponId = priceInfo.CouponId.Value,
+                        CustomerId = customerId,
+                        OrderId = newOrder.OrderId,
+                        UsedAt = DateTime.UtcNow
+                    };
+                    var coupon = await _db.Coupons.FirstOrDefaultAsync(c => c.CouponId == priceInfo.CouponId.Value, ct);
+                    if (coupon != null)
+                    {
+                        coupon.UsedCount = (coupon.UsedCount ?? 0) + 1;
+                    }
+                    await _unitOfWork.SaveChangesAsync(ct);
                 }
-                else
+
+                // ============ BƯỚC 6: XÓA GIỎ HÀNG ============
+                await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
+
+                // ============ BƯỚC 7: XỬ LÝ PHƯƠNG THỨC THANH TOÁN ============
+                if (request.TypePayment == 0) // COD
                 {
-                    var paymentUrl =  _vnPayService.CreatePaymentUrl(newOrder.OrderId, totalAmount, request.IpAddress);
+                    var response = new CreatePaymentResponse
+                    {
+                        OrderId = newOrder.OrderId,
+                        Message = "Đặt hàng thành công (COD)."
+                    };
                     await _redisConnection.StringSetAsync(idempotencyKey,
-                        JsonSerializer.Serialize(paymentUrl), TimeSpan.FromHours(24));
-                    return Result<string>.Success(paymentUrl, 201);
+                        JsonSerializer.Serialize(response), TimeSpan.FromHours(24));
+                    return Result<CreatePaymentResponse>.Success(response, 201);
+                }
+                else // VnPay
+                {
+                    var paymentUrl = _vnPayService.CreatePaymentUrl(newOrder.OrderId, priceInfo.FinalAmount, request.IpAddress);
+
+                    await _publishEndpoint.Publish(new OrderTimeoutEvent(newOrder.OrderId), context =>
+                    {
+                        context.Delay = TimeSpan.FromMinutes(15);
+                    }, ct);
+
+                    var response = new CreatePaymentResponse
+                    {
+                        OrderId = newOrder.OrderId,
+                        PaymentUrl = paymentUrl,
+                        Message = "Vui lòng thanh toán trong 15 phút."
+                    };
+                    await _redisConnection.StringSetAsync(idempotencyKey,
+                        JsonSerializer.Serialize(response), TimeSpan.FromHours(24));
+                    return Result<CreatePaymentResponse>.Success(response, 201);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
+                foreach (var success in successItems)
+                {
+                    await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
+                }
                 await _redisConnection.KeyDeleteAsync(idempotencyKey);
-                return Result<string>.Failure("An internal error occurred while processing the payment.", 500);
-            }
-            finally
-            {
-                await _redisConnection.KeyDeleteAsync(reservationLockKey);
+                return Result<CreatePaymentResponse>.Failure("Đã xảy ra lỗi khi xử lý thanh toán.", 500);
             }
         }
     }

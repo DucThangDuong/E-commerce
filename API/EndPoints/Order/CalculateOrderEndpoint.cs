@@ -8,24 +8,23 @@ using Application.DTOs.Response;
 
 namespace API.EndPoints.Order
 {
-    public class AddNewOrderEndpoint : Endpoint<ReqAddNewOrder>
+    public class CalculateOrderEndpoint : Endpoint<ReqCalculateOrder>
     {
         public IMediator Mediator { get; set; }
-        public AddNewOrderEndpoint(IMediator mediator)
+        public CalculateOrderEndpoint(IMediator mediator)
         {
             Mediator = mediator;
         }
         public override void Configure()
         {
-            Post("/order");
+            Post("/order/calculate");
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
-            Options(x => x.RequireRateLimiting("order_strict"));
         }
-        public override async Task HandleAsync(ReqAddNewOrder req, CancellationToken ct)
+        public override async Task HandleAsync(ReqCalculateOrder req, CancellationToken ct)
         {
             int userId = HttpContext.User.GetUserId();
             var items = req.Items.Select(i => new CartItemRequest(i.ColorId, i.Quantity)).ToList();
-            var result = await Mediator.Send(new ValidateCartCommand(userId, items), ct);
+            var result = await Mediator.Send(new CalculateOrderCommand(items, req.CouponCode, userId), ct);
 
             await this.SendApiResponseAsync(result, ct);
         }

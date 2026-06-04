@@ -32,12 +32,24 @@ namespace Application.Features.Products.Queries
                 if (!infoTask.IsNullOrEmpty)
                 {
                     var cachedProduct = JsonSerializer.Deserialize<ResProductDto>(infoTask.ToString());
-                    if (cachedProduct != null)
+                    if (cachedProduct != null && cachedProduct.Colors.Any())
                     {
+                        var colorIds = cachedProduct.Colors.Select(c => c.ColorId).ToList();
+                        var redisKeys = colorIds.Select(id => (RedisKey)$"Color:Stock:{id}").ToArray();
+                        
+                        var redisValues = await _redisConnection.StringGetAsync(redisKeys);
+
+                        for (int i = 0; i < colorIds.Count; i++)
+                        {
+                            if (redisValues[i].HasValue && int.TryParse(redisValues[i], out int redisStock))
+                            {
+                                cachedProduct.Colors[i].StockQuantity = redisStock;
+                            }
+                        }
+                        
                         return Result<ResProductDto>.Success(cachedProduct);
                     }
                 }
-
                 var product = await _db.Products
                     .AsNoTracking()
                     .Where(e => e.ProductId == query.ProductId)
@@ -70,6 +82,28 @@ namespace Application.Features.Products.Queries
                     await _notificationService.AddConnectionToGroup(query.ConnectionId, $"Product_{query.ProductId}");
                 }
                 await _redisConnection.StringSetAsync(cacheKeyInfo, JsonSerializer.Serialize(product), TimeSpan.FromMinutes(10));
+                var tasks = new List<Task>();
+                foreach (var i in product.Colors)
+                {
+                    var stockColorId = $"Color:Stock:{i.ColorId}";
+                    tasks.Add(_redisConnection.StringSetAsync(stockColorId, i.StockQuantity, TimeSpan.FromDays(1), When.NotExists));
+                }
+                await Task.WhenAll(tasks);
+                if (product.Colors.Any())
+                {
+                    var colorIds = product.Colors.Select(c => c.ColorId).ToList();
+                    var redisKeys = colorIds.Select(id => (RedisKey)$"Color:Stock:{id}").ToArray();
+                    var redisValues = await _redisConnection.StringGetAsync(redisKeys);
+
+                    for (int i = 0; i < colorIds.Count; i++)
+                    {
+                        if (redisValues[i].HasValue && int.TryParse(redisValues[i], out int redisStock))
+                        {
+                            product.Colors[i].StockQuantity = redisStock;
+                        }
+                    }
+                }
+
                 return Result<ResProductDto>.Success(product, 200);
             }
             catch (Exception ex)

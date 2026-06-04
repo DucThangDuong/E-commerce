@@ -43,7 +43,7 @@ namespace API
             builder.Services.AddFastEndpoints();
             builder.Services.AddDbContext<EcommerceContext>(options =>
             {
-                options.UseSqlServer(builder.Configuration["ConnectionStrings:AZURE_SQL_CONNECTIONSTRING"], sqlOptions =>
+                options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"], sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,

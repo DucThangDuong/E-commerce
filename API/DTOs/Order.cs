@@ -9,11 +9,15 @@ namespace API.DTOs
         public int ColorId { get; set; }
         public int Quantity { get; set; }
     }
-    public class ReqOrderInfo
+    public class ReqCalculateOrder
     {
-        public string ReservationId { get; set; } = null!;
-        public double Amount { get; set; }
-        public string OrderDescription { get; set; } = null!;
+        public List<ProductOrder> Items { get; set; } = null!;
+        public string? CouponCode { get; set; }
+    }
+    public class ReqCreatePayment
+    {
+        public List<ProductOrder> Items { get; set; } = null!;
+        public string? CouponCode { get; set; }
         public string FullName { get; set; } = null!;
         public string Address { get; set; } = null!;
         public string PhoneNumber { get; set; } = null!;

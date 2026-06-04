@@ -3,15 +3,18 @@ using FluentValidation;
 
 namespace API.DTOs.Validators;
 
-public class OrderInfoValidator : Validator<ReqOrderInfo>
+public class CreatePaymentValidator : Validator<ReqCreatePayment>
 {
-    public OrderInfoValidator()
+    public CreatePaymentValidator()
     {
-        RuleFor(x => x.ReservationId)
-            .NotEmpty().WithMessage("ReservationId không được để trống");
+        RuleFor(x => x.Items)
+            .NotEmpty().WithMessage("Danh sách sản phẩm không được để trống");
 
-        RuleFor(x => x.Amount)
-            .GreaterThan(0).WithMessage("Amount phải lớn hơn 0");
+        RuleForEach(x => x.Items).ChildRules(item =>
+        {
+            item.RuleFor(i => i.ColorId).GreaterThan(0).WithMessage("ColorId phải lớn hơn 0");
+            item.RuleFor(i => i.Quantity).GreaterThan(0).WithMessage("Quantity phải lớn hơn 0");
+        });
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("Họ tên không được để trống")
@@ -29,11 +32,6 @@ public class OrderInfoValidator : Validator<ReqOrderInfo>
             .MinimumLength(10).WithMessage("Số điện thoại không được ít hơn 10")
             .MaximumLength(10).WithMessage("Số điện thoại không được vượt quá 10 ký tự")
             .Matches(@"^[\d\+\-\s]*$").WithMessage("Số điện thoại chỉ được chứa số");
-
-        RuleFor(x => x.OrderDescription)
-            .MaximumLength(500).WithMessage("Mô tả đơn hàng không được vượt quá 500 ký tự")
-            .Must(XssProtection.IsCleanDescription).WithMessage("Mô tả đơn hàng chứa nội dung không hợp lệ (phát hiện mã độc)")
-            .When(x => !string.IsNullOrEmpty(x.OrderDescription));
 
         RuleFor(x => x.TypePayment)
             .InclusiveBetween(0, 1).WithMessage("TypePayment chỉ được là 0 hoặc 1");
