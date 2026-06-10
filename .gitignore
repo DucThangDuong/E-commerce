@@ -49,6 +49,7 @@ Thumbs.db
 *.bak
 *.tmp
 *.old
+.agents/
 
 # Resharper & JetBrains Rider
 _ReSharper*/

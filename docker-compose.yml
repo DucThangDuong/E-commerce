@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   api:
-    image: ${DOCKER_USERNAME:-suminobraa}/ecommerce-api:latest
+    image: ${DOCKER_USERNAME}/ecommerce-api:latest
     container_name: ecommerce_api
     ports:
       - "8080:8080" 

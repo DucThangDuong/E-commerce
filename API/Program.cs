@@ -1,15 +1,14 @@
-using Amazon.S3;
 using API.DTOs;
 using API.Middleware;
 using Application.Consumers;
 using Application.Interfaces;
 using Application.IServices;
 using FastEndpoints;
+using FastEndpoints.Swagger;
 using Infrastructure;
 using Infrastructure.Repositories;
 using Infrastructure.Services;
 using MassTransit;
-using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -41,6 +40,15 @@ namespace API
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddFastEndpoints();
+            builder.Services.SwaggerDocument(o =>
+            {
+                o.DocumentSettings = s =>
+                {
+                    s.Title = "E-commerce API";
+                    s.Version = "v1";
+                };
+                o.EnableJWTBearerAuth = true;
+            });
             builder.Services.AddDbContext<EcommerceContext>(options =>
             {
                 options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"], sqlOptions =>
@@ -287,6 +295,7 @@ namespace API
                     };
                 };
             });
+            app.UseSwaggerGen();
             app.MapControllers();
             app.MapHub<NotificationHub>("/notifications");
             app.Run();
