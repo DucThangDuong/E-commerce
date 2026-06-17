@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Products.Queries
 {
-    public record GetAllProductQuery(int Skip, int Take) : IRequest<Result<List<ResProductDto>>>;
+    public record GetAllProductQuery(int Skip, int Take) : IRequest<Result<ResPagedProductDto>>;
 
-    public class GetAllProductHandler : IRequestHandler<GetAllProductQuery, Result<List<ResProductDto>>>
+    public class GetAllProductHandler : IRequestHandler<GetAllProductQuery, Result<ResPagedProductDto>>
     {
         private readonly IAppReadDbContext _db;
 
@@ -17,15 +17,17 @@ namespace Application.Features.Products.Queries
             _db = db;
         }
 
-        public async Task<Result<List<ResProductDto>>> Handle(GetAllProductQuery query, CancellationToken ct)
+        public async Task<Result<ResPagedProductDto>> Handle(GetAllProductQuery query, CancellationToken ct)
         {
             try
             {
+                int totalItems = await _db.Products.CountAsync(ct);
+
                 var products = await _db.Products
                     .AsNoTracking()
                     .OrderBy(e => e.ProductId)
                     .Skip(query.Skip)
-                    .Take(query.Take)
+                    .Take(query.Take > 0 ? query.Take : 10)
                     .Select(e => new ResProductDto
                     {
                         BasePrice = e.BasePrice,
@@ -45,11 +47,22 @@ namespace Application.Features.Products.Queries
                         }).ToList()
                     })
                     .ToListAsync(ct);
-                return Result<List<ResProductDto>>.Success(products,200);
+
+                int take = query.Take > 0 ? query.Take : 10;
+                var pagedResult = new ResPagedProductDto
+                {
+                    TotalItems = totalItems,
+                    TotalPages = (int)Math.Ceiling(totalItems / (double)take),
+                    CurrentPage = (query.Skip / take) + 1,
+                    PageSize = take,
+                    Products = products
+                };
+
+                return Result<ResPagedProductDto>.Success(pagedResult, 200);
             }
             catch (Exception ex)
             {
-                return Result<List<ResProductDto>>.Failure($"Lỗi khi lấy danh sách sản phẩm: {ex.Message}", 500);
+                return Result<ResPagedProductDto>.Failure($"Lỗi khi lấy danh sách sản phẩm: {ex.Message}", 500);
             }
         }
     }

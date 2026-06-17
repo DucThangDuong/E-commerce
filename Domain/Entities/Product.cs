@@ -17,6 +17,8 @@ public partial class Product
 
     public decimal BasePrice { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
     public virtual Brand? Brand { get; set; }
 
     public virtual Category Category { get; set; } = null!;

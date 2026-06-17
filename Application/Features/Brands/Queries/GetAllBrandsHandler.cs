@@ -25,27 +25,24 @@ namespace Application.Features.Brands.Queries
             try
             {
                 string cacheKey = $"brand";
-                var cachedData = await _cache.GetAsync<List<ResBrandDto>>(cacheKey);
-                if(cachedData != null)
-                {
-                    return Result<List<ResBrandDto>>.Success(cachedData, 200);
-                }
-                
-                var result = await _db.Brands
-                    .AsNoTracking()
-                    .OrderBy(e => e.BrandId)
-                    .Take(query.Take)
-                    .Select(b => new ResBrandDto
-                    {
-                        BrandId = b.BrandId,
-                        Description = b.Description,
-                        Name = b.Name,
-                        LogoUrl = b.LogoUrl
-                    })
-                    .ToListAsync(ct);
 
-                await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-                return Result<List<ResBrandDto>>.Success(result, 200);
+                var result = await _cache.GetOrSetAsync(cacheKey, async () => 
+                {
+                    return await _db.Brands
+                        .AsNoTracking()
+                        .OrderBy(e => e.BrandId)
+                        .Take(query.Take)
+                        .Select(b => new ResBrandDto
+                        {
+                            BrandId = b.BrandId,
+                            Description = b.Description,
+                            Name = b.Name,
+                            LogoUrl = b.LogoUrl
+                        })
+                        .ToListAsync(ct);
+                }, TimeSpan.FromHours(24));
+
+                return Result<List<ResBrandDto>>.Success(result ?? new List<ResBrandDto>(), 200);
             }
             catch (Exception ex)
             {

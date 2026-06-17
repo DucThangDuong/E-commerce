@@ -1,4 +1,4 @@
-﻿using Application.IServices;
+using Application.IServices;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 
@@ -28,6 +28,22 @@ namespace Infrastructure.Services
                 .SetAbsoluteExpiration(absoluteExpirationRelativeToNow ?? TimeSpan.FromMinutes(15));
             await _cache.SetStringAsync(key, serializedValue, options);
 
+        }
+
+        public async Task<T?> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
+        {
+            var cachedValue = await GetAsync<T>(key);
+            if (cachedValue != null)
+            {
+                return cachedValue;
+            }
+
+            var value = await factory();
+            if (value != null)
+            {
+                await SetAsync(key, value, expiration);
+            }
+            return value;
         }
     }
 }

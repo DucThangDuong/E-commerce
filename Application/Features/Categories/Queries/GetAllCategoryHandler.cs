@@ -24,27 +24,24 @@ namespace Application.Features.Categories.Queries
             try
             {
                 string cacheKey = $"category";
-                var cachedData = await _cache.GetAsync<List<ResCategoryDto>>(cacheKey);
-                if (cachedData != null)
+
+                var result = await _cache.GetOrSetAsync(cacheKey, async () => 
                 {
-                    return Result<List<ResCategoryDto>>.Success(cachedData);
-                }
+                    return await _db.Categories
+                        .AsNoTracking()
+                        .OrderBy(e => e.CategoryId)
+                        .Take(query.Take)
+                        .Select(c => new ResCategoryDto
+                        {
+                            CategoryId = c.CategoryId,
+                            Description = c.Description,
+                            Name = c.Name,
+                            Picture = c.Picture
+                        })
+                        .ToListAsync(ct);
+                }, TimeSpan.FromHours(24));
 
-                var result = await _db.Categories
-                    .AsNoTracking()
-                    .OrderBy(e => e.CategoryId)
-                    .Take(query.Take)
-                    .Select(c => new ResCategoryDto
-                    {
-                        CategoryId = c.CategoryId,
-                        Description = c.Description,
-                        Name = c.Name,
-                        Picture = c.Picture
-                    })
-                    .ToListAsync(ct);
-
-                await _cache.SetAsync(cacheKey, result, TimeSpan.FromHours(24));
-                return Result<List<ResCategoryDto>>.Success(result);
+                return Result<List<ResCategoryDto>>.Success(result ?? new List<ResCategoryDto>());
             }
             catch (Exception ex)
             {

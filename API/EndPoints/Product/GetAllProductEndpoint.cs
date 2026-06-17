@@ -7,7 +7,9 @@ namespace API.EndPoints.Product
 {
     public class ReqGetProductDto
     {
+        [QueryParam]
         public int take { get; set; } = 10;
+        [QueryParam]
         public int skip { get; set; } = 0;
     }
 

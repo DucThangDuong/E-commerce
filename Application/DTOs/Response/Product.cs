@@ -15,6 +15,12 @@ namespace Application.DTOs.Response
         public List<string>? ImageUrls { get; set; }
     }
 
+    public class ResProductSpecificationDto
+    {
+        public string SpecName { get; set; } = null!;
+        public string SpecValue { get; set; } = null!;
+    }
+
     public class ResProductDto
     {
         public int ProductId { get; set; }
@@ -30,6 +36,15 @@ namespace Application.DTOs.Response
         public decimal BasePrice { get; set; }
         public List<string>? ImageUrls { get; set; } 
         public List<ResProductColorDto> Colors { get; set; } = new List<ResProductColorDto>();
+        public List<ResProductSpecificationDto>? Specifications { get; set; }
+    }
+    public class ResPagedProductDto
+    {
+        public int TotalItems { get; set; }
+        public int TotalPages { get; set; }
+        public int CurrentPage { get; set; }
+        public int PageSize { get; set; }
+        public List<ResProductDto> Products { get; set; } = new();
     }
     public class FileUploadDto
     {

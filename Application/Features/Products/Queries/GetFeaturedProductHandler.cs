@@ -25,45 +25,41 @@ namespace Application.Features.Products.Queries
             try
             {
                 string cacheKey = "featured_products";
-                var cachedProducts = await _cache.GetAsync<List<ResFeaturedProductDto>>(cacheKey);
-                if (cachedProducts != null)
+                var featuredProducts = await _cache.GetOrSetAsync(cacheKey, async () => 
                 {
-                    return Result<List<ResFeaturedProductDto>>.Success(cachedProducts);
-                }
-
-                var featuredProducts = await _db.FeaturedProducts
-                    .AsNoTracking()
-                    .OrderBy(f => f.DisplayOrder)
-                    .Select(f => new ResFeaturedProductDto
-                    {
-                        FeaturedId = f.FeaturedId,
-                        ProductId = f.ProductId,
-                        DisplayOrder = f.DisplayOrder,
-                        StartDate = f.StartDate,
-                        EndDate = f.EndDate,
-                        Product = new ResProductDto
+                    return await _db.FeaturedProducts
+                        .AsNoTracking()
+                        .OrderBy(f => f.DisplayOrder)
+                        .Select(f => new ResFeaturedProductDto
                         {
-                            BasePrice = f.Product.BasePrice,
-                            CategoryId = f.Product.CategoryId,
-                            BrandId = f.Product.BrandId,
-                            Description = f.Product.Description,
-                            Name = f.Product.Name,
-                            ProductId = f.Product.ProductId,
-                            ImageUrls = f.Product.ProductImages.Where(pi => pi.ColorId == null).Select(pi => pi.ImageUrl).ToList(),
-                            Colors = f.Product.ProductColors.Select(pc => new ResProductColorDto
+                            FeaturedId = f.FeaturedId,
+                            ProductId = f.ProductId,
+                            DisplayOrder = f.DisplayOrder,
+                            StartDate = f.StartDate,
+                            EndDate = f.EndDate,
+                            Product = new ResProductDto
                             {
-                                ColorId = pc.ColorId,
-                                ColorName = pc.ColorName,
-                                PriceAdjustment = pc.PriceAdjustment,
-                                StockQuantity = pc.Inventory != null ? pc.Inventory.StockQuantity : 0,
-                                ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
-                            }).ToList()
-                        }
-                    })
-                    .ToListAsync(ct);
+                                BasePrice = f.Product.BasePrice,
+                                CategoryId = f.Product.CategoryId,
+                                BrandId = f.Product.BrandId,
+                                Description = f.Product.Description,
+                                Name = f.Product.Name,
+                                ProductId = f.Product.ProductId,
+                                ImageUrls = f.Product.ProductImages.Where(pi => pi.ColorId == null).Select(pi => pi.ImageUrl).ToList(),
+                                Colors = f.Product.ProductColors.Select(pc => new ResProductColorDto
+                                {
+                                    ColorId = pc.ColorId,
+                                    ColorName = pc.ColorName,
+                                    PriceAdjustment = pc.PriceAdjustment,
+                                    StockQuantity = pc.Inventory != null ? pc.Inventory.StockQuantity : 0,
+                                    ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
+                                }).ToList()
+                            }
+                        })
+                        .ToListAsync(ct);
+                }, TimeSpan.FromHours(24));
 
-                await _cache.SetAsync(cacheKey, featuredProducts, TimeSpan.FromHours(24));
-                return Result<List<ResFeaturedProductDto>>.Success(featuredProducts);
+                return Result<List<ResFeaturedProductDto>>.Success(featuredProducts ?? new List<ResFeaturedProductDto>());
             }
             catch (Exception ex)
             {

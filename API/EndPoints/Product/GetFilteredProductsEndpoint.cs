@@ -7,9 +7,16 @@ namespace API.EndPoints.Product
 {
     public class ReqGetFilteredProductsDto
     {
+        [QueryParam]
         public List<int>? CategoryIds { get; set; }
+        
+        [QueryParam]
         public List<int>? BrandIds { get; set; }
+        
+        [QueryParam]
         public int take { get; set; } = 10;
+        
+        [QueryParam]
         public int skip { get; set; } = 0;
     }
 
