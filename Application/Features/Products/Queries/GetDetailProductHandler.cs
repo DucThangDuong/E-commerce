@@ -34,6 +34,7 @@ namespace Application.Features.Products.Queries
                 {
                     return await _db.Products
                         .AsNoTracking()
+                        .AsSplitQuery()
                         .Where(e => e.ProductId == query.ProductId)
                         .Select(e => new ResProductDto
                         {

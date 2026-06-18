@@ -24,7 +24,7 @@ namespace API.EndPoints.Order
         }
         public override async Task HandleAsync(ReqCreatePayment req, CancellationToken ct)
         {
-            if (!HttpContext.Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyKey))
+            if (!HttpContext.Request.Headers.TryGetValue("Idempotency-Key", out var idempotencyKey) && req.TypePayment == 1)
             {
                 Result Fail = Result.Failure("Missing Header: Idempotency-Key is required.", 400);
                 await this.SendApiResponseAsync(Fail, ct, defaultErrorCode: "ERR_MISSING_IDEMPOTENCY_KEY");

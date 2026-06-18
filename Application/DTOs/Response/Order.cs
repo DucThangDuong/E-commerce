@@ -33,6 +33,14 @@ namespace Application.DTOs.Response
         public decimal SubTotal { get; init; }
         public List<ValidatedCartItem> Items { get; init; } = new();
     }
+    public record ValidatedCartItem
+    {
+        public int ColorId { get; init; }
+        public int Quantity { get; init; }
+        public decimal UnitPrice { get; init; }
+        public decimal LineTotal { get; init; }
+        public int AvailableStock { get; init; }
+    }
     public record CalculateOrderResponse
     {
         public decimal SubTotal { get; init; }

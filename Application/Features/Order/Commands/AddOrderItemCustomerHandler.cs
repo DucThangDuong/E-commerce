@@ -8,14 +8,6 @@ namespace Application.Features.Order.Commands
 {
 
     public record ValidateCartCommand(int CustomerId, List<CartItemRequest> Items) : IRequest<Result<ValidateCartResponse>>;
-    public record ValidatedCartItem
-    {
-        public int ColorId { get; init; }
-        public int Quantity { get; init; }
-        public decimal UnitPrice { get; init; }
-        public decimal LineTotal { get; init; }
-        public int AvailableStock { get; init; }
-    }
 
     public class ValidateCartHandler : IRequestHandler<ValidateCartCommand, Result<ValidateCartResponse>>
     {

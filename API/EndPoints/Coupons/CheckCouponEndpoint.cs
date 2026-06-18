@@ -22,7 +22,7 @@ namespace API.EndPoints.Coupons
 
         public override void Configure()
         {
-            Post("/coupons/check");
+            Post("/coupons/apply");
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         }
 

@@ -41,7 +41,7 @@ namespace Infrastructure.Services
             vnpay.AddRequestData("vnp_OrderType", "other");
             vnpay.AddRequestData("vnp_TxnRef", orderId.ToString());
             vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
-            vnpay.AddRequestData("vnp_IpnUrl", vnp_IpnUrl);
+            //vnpay.AddRequestData("vnp_IpnUrl", vnp_IpnUrl);
             //vnpay.AddRequestData("vnp_ExpireDate", DateTime.Now.AddMinutes(15).ToString("yyyyMMddHHmmss"));
 
             string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);

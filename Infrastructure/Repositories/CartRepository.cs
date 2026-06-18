@@ -42,6 +42,20 @@ namespace Infrastructure.Repositories
                 .FirstOrDefaultAsync(c => c.CustomerId == customerId && c.ColorId == colorId);
         }
 
+        public async Task<Cart?> GetCartByIdAsync(int cartId, int customerId)
+        {
+            return await _context.Carts
+                .FirstOrDefaultAsync(c => c.CartId == cartId && c.CustomerId == customerId);
+        }
+
+        public async Task<bool> DeleteCartByIdAsync(int cartId, int customerId)
+        {
+            var deleted = await _context.Carts
+                .Where(e => e.CartId == cartId && e.CustomerId == customerId)
+                .ExecuteDeleteAsync();
+            return deleted > 0;
+        }
+
 
     }
 }

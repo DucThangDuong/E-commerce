@@ -54,21 +54,25 @@ namespace Application.Features.Order.Commands
         public async Task<Result<CreatePaymentResponse>> Handle(CreatePaymentCommand request, CancellationToken ct)
         {
             string idempotencyKey = $"Idempotency:Payment:{request.IdempotencyKey}";
-            var cachedResponse = await _redisConnection.StringGetAsync(idempotencyKey);
-            if (cachedResponse.HasValue)
+            
+            if (request.TypePayment == 1)
             {
-                if (cachedResponse == "PROCESSING")
+                var cachedResponse = await _redisConnection.StringGetAsync(idempotencyKey);
+                if (cachedResponse.HasValue)
                 {
-                    return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý. Vui lòng không gửi lại.", 409);
+                    if (cachedResponse == "PROCESSING")
+                    {
+                        return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý. Vui lòng không gửi lại.", 409);
+                    }
+                    var cached = JsonSerializer.Deserialize<CreatePaymentResponse>(cachedResponse!);
+                    return Result<CreatePaymentResponse>.Success(cached!, 200);
                 }
-                var cached = JsonSerializer.Deserialize<CreatePaymentResponse>(cachedResponse!);
-                return Result<CreatePaymentResponse>.Success(cached!, 200);
-            }
 
-            bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(15), When.NotExists);
-            if (!lockAcquired)
-            {
-                return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý.", 409);
+                bool lockAcquired = await _redisConnection.StringSetAsync(idempotencyKey, "PROCESSING", TimeSpan.FromMinutes(15), When.NotExists);
+                if (!lockAcquired)
+                {
+                    return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý.", 409);
+                }
             }
 
             var itemUserWantBuy = new Dictionary<int, int>();
@@ -130,7 +134,6 @@ namespace Application.Features.Order.Commands
 
                 var priceInfo = calculateResult.Data!;
 
-                // ============ BƯỚC 3: LẤY GIÁ VÀ TẠO ORDER ITEMS ============
                 List<int> colorIds = itemUserWantBuy.Keys.ToList();
                 Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
@@ -154,7 +157,6 @@ namespace Application.Features.Order.Commands
                     });
                 }
 
-                // ============ BƯỚC 4: XÁC ĐỊNH TRẠNG THÁI ĐƠN HÀNG ============
                 string orderStatus = request.TypePayment == 0
                     ? OrderStatus.Pending.ToString()
                     : OrderStatus.Processing_Payment.ToString();
@@ -199,7 +201,6 @@ namespace Application.Features.Order.Commands
                 await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(itemUserWantBuy);
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                // Ghi nhận CouponUsage nếu có
                 if (priceInfo.CouponId.HasValue)
                 {
                     var couponUsage = new CouponUsage
@@ -217,10 +218,8 @@ namespace Application.Features.Order.Commands
                     await _unitOfWork.SaveChangesAsync(ct);
                 }
 
-                // ============ BƯỚC 6: XÓA GIỎ HÀNG ============
                 await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
 
-                // ============ BƯỚC 7: XỬ LÝ PHƯƠNG THỨC THANH TOÁN ============
                 if (request.TypePayment == 0) // COD
                 {
                     var response = new CreatePaymentResponse
@@ -228,8 +227,6 @@ namespace Application.Features.Order.Commands
                         OrderId = newOrder.OrderId,
                         Message = "Đặt hàng thành công (COD)."
                     };
-                    await _redisConnection.StringSetAsync(idempotencyKey,
-                        JsonSerializer.Serialize(response), TimeSpan.FromHours(24));
                     return Result<CreatePaymentResponse>.Success(response, 201);
                 }
                 else // VnPay
@@ -258,7 +255,10 @@ namespace Application.Features.Order.Commands
                 {
                     await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
                 }
-                await _redisConnection.KeyDeleteAsync(idempotencyKey);
+                if (request.TypePayment == 1)
+                {
+                    await _redisConnection.KeyDeleteAsync(idempotencyKey);
+                }
                 return Result<CreatePaymentResponse>.Failure("Đã xảy ra lỗi khi xử lý thanh toán.", 500);
             }
         }

@@ -89,7 +89,8 @@ namespace Application.Features.Coupons.Commands
             }
 
             decimal discountAmount = 0;
-            if (coupon.DiscountType == Domain.Enums.DiscountType.Percentage.ToString())
+            if (string.Equals(coupon.DiscountType, Domain.Enums.DiscountType.Percentage.ToString(), StringComparison.OrdinalIgnoreCase) || 
+                string.Equals(coupon.DiscountType, "percentage", StringComparison.OrdinalIgnoreCase))
             {
                 discountAmount = subTotal * coupon.DiscountValue / 100;
                 if (coupon.MaxDiscountAmount.HasValue && discountAmount > coupon.MaxDiscountAmount.Value)
