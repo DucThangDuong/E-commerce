@@ -30,7 +30,8 @@ namespace API
                 option.AddPolicy("CORS", options =>
                 {
                     options
-                    .WithOrigins("http://localhost:5173")
+                    .WithOrigins("https://e-commerce-frontend-umber-eight.vercel.app",
+                           "http://localhost:3000")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();

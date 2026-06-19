@@ -24,6 +24,7 @@ services:
       - VnPayConfig__BaseUrl=${BaseUrl}
       - VnPayConfig__ReturnUrl=${ReturnUrl}
       - VnPayConfig__Version=${Version}
+      - FrontendUrl=https://e-commerce-frontend-umber-eight.vercel.app/
     depends_on:
       redis:
         condition: service_healthy
@@ -68,6 +69,20 @@ services:
     networks:
       - ecommerce-network
     restart: always
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ecommerce_ngrok
+    restart: always
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "api:8080"
+      - "--domain=shrivel-spool-immovably.ngrok-free.dev"
+    depends_on:
+      - api
+    networks:
+      - ecommerce-network
 
 volumes:
   redis_data:
