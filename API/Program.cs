@@ -29,16 +29,9 @@ namespace API
             {
                 option.AddPolicy("CORS", options =>
                 {
-                    var frontendUrl = builder.Configuration["FrontendUrl"];
-                    var allowedOrigins = new List<string> { "http://localhost:5173" };
-                    if (!string.IsNullOrEmpty(frontendUrl))
-                    {
-                        var origins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries);
-                        allowedOrigins.AddRange(origins);
-                    }
-
                     options
-                    .WithOrigins(allowedOrigins.ToArray())
+                    .WithOrigins("https://e-commerce-frontend-umber-eight.vercel.app",
+                           "http://localhost:3000")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
