@@ -51,7 +51,11 @@ namespace API
             });
             builder.Services.AddDbContext<EcommerceContext>(options =>
             {
-                options.UseSqlServer(builder.Configuration["ConnectionStrings:Ecommerce"], sqlOptions =>
+                var connectionString = builder.Environment.IsProduction() 
+                    ? builder.Configuration.GetConnectionString("AZURE_SQL_CONNECTIONSTRING") 
+                    : builder.Configuration.GetConnectionString("Ecommerce");
+
+                options.UseSqlServer(connectionString, sqlOptions =>
                 {
                     sqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 5,

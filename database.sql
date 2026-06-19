@@ -1,8 +1,4 @@
-﻿-- ====================================================================
--- PHẦN 1: CÁC BẢNG ĐỘC LẬP (Không chứa khóa ngoại)
--- ====================================================================
-
-CREATE TABLE Customers (
+﻿CREATE TABLE Customers (
     customer_id INT IDENTITY(1,1) PRIMARY KEY,
     name NVARCHAR(100) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -71,11 +67,6 @@ CREATE TABLE Coupons (
     created_at DATETIME DEFAULT GETDATE()
 );
 GO
-
--- ====================================================================
--- PHẦN 2: CÁC BẢNG CẤP 1 (Tham chiếu đến bảng độc lập)
--- ====================================================================
-
 CREATE TABLE Products (
     product_id INT IDENTITY(1,1) PRIMARY KEY,
     category_id INT NOT NULL,
@@ -102,10 +93,6 @@ CREATE TABLE Orders (
     FOREIGN KEY (coupon_id) REFERENCES Coupons(coupon_id) ON DELETE SET NULL
 );
 GO
-
--- ====================================================================
--- PHẦN 3: CÁC BẢNG CẤP 2 (Tham chiếu đến bảng Cấp 1)
--- ====================================================================
 
 CREATE TABLE ProductColors (
     color_id INT IDENTITY(1,1) PRIMARY KEY,
