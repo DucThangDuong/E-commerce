@@ -29,8 +29,16 @@ namespace API
             {
                 option.AddPolicy("CORS", options =>
                 {
+                    var frontendUrl = builder.Configuration["FrontendUrl"];
+                    var allowedOrigins = new List<string> { "http://localhost:5173" };
+                    if (!string.IsNullOrEmpty(frontendUrl))
+                    {
+                        var origins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        allowedOrigins.AddRange(origins);
+                    }
+
                     options
-                    .WithOrigins("http://localhost:5173")
+                    .WithOrigins(allowedOrigins.ToArray())
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
