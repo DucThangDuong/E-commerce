@@ -17,34 +17,20 @@ namespace API.Middleware
             var headers = context.Response.Headers;
             var path = context.Request.Path.Value ?? "";
 
-            // Ngăn trình duyệt render HTML trong response — chống reflected XSS
             headers["X-Content-Type-Options"] = "nosniff";
-
-            // Ngăn trang bị nhúng trong iframe — chống clickjacking
             headers["X-Frame-Options"] = "DENY";
-
-            // Bật XSS filter của trình duyệt (legacy nhưng vẫn hữu ích cho trình duyệt cũ)
             headers["X-XSS-Protection"] = "1; mode=block";
-
-            // Không gửi referrer khi navigate cross-origin
             headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
 
-            // Chỉ cho phép HTTPS (bật khi deploy production có SSL)
             // headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
-
-            // Content Security Policy
-            // Swagger UI cần 'unsafe-inline' cho script để hoạt động, nên ta nới lỏng CSP cho route /swagger
             if (path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase))
             {
                 headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com;";
             }
             else
             {
-                // Chặt chẽ cho tất cả các route API khác — chặn inline scripts
                 headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com;";
             }
-
-            // Không cho phép trình duyệt cache response chứa dữ liệu nhạy cảm
             headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
             headers["Pragma"] = "no-cache";
 

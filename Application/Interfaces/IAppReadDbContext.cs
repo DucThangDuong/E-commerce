@@ -6,6 +6,7 @@ namespace Application.Interfaces
     public interface IAppReadDbContext
     {
         DbSet<Brand> Brands { get; }
+        DbSet<CancellationReason> CancellationReasons { get; }
 
         DbSet<Cart> Carts { get; }
 
@@ -22,6 +23,8 @@ namespace Application.Interfaces
         DbSet<Inventory> Inventories { get; }
 
         DbSet<Order> Orders { get; }
+
+        DbSet<OrderCancellation> OrderCancellations { get; }
 
         DbSet<OrderItem> OrderItems { get; }
 

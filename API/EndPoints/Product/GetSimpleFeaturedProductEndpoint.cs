@@ -5,7 +5,7 @@ using MediatR;
 
 namespace API.EndPoints.Product
 {
-    public class GetFeaturedProductEndpoint : EndpointWithoutRequest
+    public class GetSimpleFeaturedProductEndpoint : EndpointWithoutRequest
     {
         public IMediator Mediator { get; set; } = null!;
 
@@ -17,7 +17,7 @@ namespace API.EndPoints.Product
 
         public override async Task HandleAsync(CancellationToken ct)
         {
-            var result = await Mediator.Send(new GetFeaturedProductQuery(), ct);
+            var result = await Mediator.Send(new GetSimpleFeaturedProductQuery(), ct);
             await this.SendApiResponseAsync(result, ct);
         }
     }

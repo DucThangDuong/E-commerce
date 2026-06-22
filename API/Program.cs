@@ -15,6 +15,8 @@ using Microsoft.IdentityModel.Tokens;
 using StackExchange.Redis;
 using System.Text;
 using System.Threading.RateLimiting;
+using Serilog;
+using API.Logging;
 
 namespace API
 {
@@ -24,6 +26,12 @@ namespace API
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Host.UseSerilog((context, services, configuration) => configuration
+                .ReadFrom.Configuration(context.Configuration)
+                .ReadFrom.Services(services)
+                .Enrich.FromLogContext()
+                .Destructure.With<SensitiveDataDestructuringPolicy>());
+
             // ──────────── CORS ────────────
             builder.Services.AddCors(option =>
             {
@@ -31,7 +39,7 @@ namespace API
                 {
                     options
                     .WithOrigins("https://e-commerce-frontend-umber-eight.vercel.app",
-                           "http://localhost:3000")
+                           "http://localhost:5173")
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
@@ -69,6 +77,7 @@ namespace API
             builder.Services.AddMediatR(cfg =>
             {
                 cfg.RegisterServicesFromAssemblyContaining<Application.Features.Customers.Commands.AddUserHandler>();
+                cfg.AddOpenBehavior(typeof(Application.Behaviors.LoggingBehavior<,>));
             });
 
             // ──────────── MassTransit + RabbitMQ ────────────
@@ -101,7 +110,6 @@ namespace API
             builder.Services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = builder.Configuration["RedisCache"];
-                options.InstanceName = "MyApp_";
             });
             var redisConnectionString = builder.Configuration["RedisCache"] ?? "localhost:6379";
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -257,9 +265,15 @@ namespace API
             {
                 errorApp.Run(async context =>
                 {
+                    var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+                    if (exceptionHandlerPathFeature?.Error is Exception ex)
+                    {
+                        Log.Error(ex, "Unhandled exception occurred while processing request");
+                    }
+
                     context.Response.StatusCode = 500;
                     context.Response.ContentType = "application/json";
-                    var response = new API.DTOs.ApiErrorResponse
+                    var response = new ApiErrorResponse
                     {
                         Message = "Hệ thống đang gặp sự cố, vui lòng thử lại sau.",
                         ErrorCode = "ERR_INTERNAL_SERVER",
@@ -269,12 +283,10 @@ namespace API
                 });
             });
 
-            // ──────────── Security Headers ────────────
             app.UseMiddleware<SecurityHeadersMiddleware>();
-
-            // ──────────── XSS Sanitization ────────────
             app.UseMiddleware<XssSanitizationMiddleware>();
-
+            app.UseMiddleware<LogContextMiddleware>();
+            app.UseSerilogRequestLogging();
             app.UseRouting();
             app.UseCors("CORS");
             app.UseHttpsRedirection();

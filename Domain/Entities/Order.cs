@@ -10,7 +10,9 @@ public partial class Order
     public int CustomerId { get; set; }
 
     public DateTime? OrderDate { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
+
     public int? CouponId { get; set; }
 
     public decimal? DiscountAmount { get; set; }
@@ -24,6 +26,8 @@ public partial class Order
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();
 
     public virtual Customer Customer { get; set; } = null!;
+
+    public virtual OrderCancellation? OrderCancellation { get; set; }
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 

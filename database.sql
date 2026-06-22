@@ -213,6 +213,25 @@ CREATE TABLE Cart (
     FOREIGN KEY (color_id) REFERENCES ProductColors(color_id)
 );
 GO
+CREATE TABLE CancellationReasons (
+    reason_id INT IDENTITY(1,1) PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    content NVARCHAR(255) NOT NULL,
+    is_active BIT DEFAULT 1 NOT NULL,
+    display_order INT DEFAULT 0 NOT NULL
+);
+GO
+CREATE TABLE OrderCancellations (
+    cancellation_id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL UNIQUE,
+    reason_id INT NOT NULL,
+    custom_reason_text NVARCHAR(500) NULL,
+    canceled_at DATETIME DEFAULT GETDATE() NOT NULL,
+    canceled_by_user_id INT NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (reason_id) REFERENCES CancellationReasons(reason_id) ON DELETE NO ACTION 
+);
+GO
 CREATE TABLE [InboxState] (
     [Id] bigint NOT NULL IDENTITY,
     [MessageId] uniqueidentifier NOT NULL,
@@ -275,12 +294,7 @@ INSERT INTO Categories (name, description, picture) VALUES
 (N'Xe tay ga', N'Mang đến sự tiện lợi tối đa cho việc di chuyển trong đô thị đông đúc. Sở hữu thiết kế thời trang, cốp chứa đồ siêu rộng, thao tác vận hành đơn giản cùng nhiều tiện ích công nghệ hiện đại đi kèm như khóa thông minh, phanh ABS.', 'img/xe-tay-ga.jpg'),
 (N'Xe côn tay', N'Dòng xe mang đậm phong cách thể thao, dành cho những ai đam mê tốc độ và muốn làm chủ hoàn toàn sức mạnh động cơ. Thao tác bóp côn gảy số mang lại cảm giác lái phấn khích, khả năng tăng tốc ấn tượng và linh hoạt.', 'img/xe-con.jpg'),
 (N'Xe PKL', N'Những cỗ máy sức mạnh mang dung tích xy-lanh từ 175cc trở lên. Đây là biểu tượng của đẳng cấp, tốc độ và sự tự do. Âm thanh ống xả uy lực cùng loạt công nghệ hỗ trợ lái tiên tiến nhất, mang đến trải nghiệm làm chủ những cung đường lớn.', 'img/pkl.jpg'),
-(N'Xe điện', N'Giải pháp di chuyển của tương lai, hoàn toàn không phát thải khí nhà kính và vận hành cực kỳ êm ái. Chi phí vận hành vô cùng tiết kiệm, tích hợp nhiều tính năng thông minh và không yêu cầu bảo dưỡng động cơ phức tạp.', 'img/dien.jpg'),
-(N'Xe cổ điển', N'Sở hữu thiết kế vượt thời gian, mang đậm nét hoài cổ (vintage) nhưng kết hợp cùng công nghệ động cơ hiện đại. Lựa chọn hoàn hảo cho những tâm hồn lãng mạn, yêu thích phong cách thời trang thanh lịch, phong trần và khác biệt.', 'img/classic.jpg'),
-(N'Xe thể thao', N'Kiệt tác khí động học lấy cảm hứng từ các giải đua xe chuyên nghiệp. Đặc trưng bởi dàn áo yếm (fairing) góc cạnh, tư thế ngồi chồm về phía trước, cho khả năng bứt tốc kinh ngạc và độ bám đường hoàn hảo ở tốc độ cao.', 'img/sport.jpg'),
-(N'Xe touring', N'Sinh ra để dành cho những chuyến hành trình xuyên quốc gia. Dòng xe được tối ưu hóa tối đa cho sự thoải mái với tư thế ngồi bệ vệ, yên xe êm ái, kính chắn gió lớn và hệ thống thùng chứa đồ dung tích khủng.', 'img/touring.jpg'),
-(N'Xe mini', N'Dòng xe có thiết kế siêu nhỏ gọn, trọng lượng cực nhẹ và kiểu dáng vô cùng phá cách, cá tính. Rất linh hoạt khi luồn lách trong ngõ hẻm chật hẹp, là lựa chọn thú vị để dạo phố hoặc dành cho những người có vóc dáng khiêm tốn.', 'img/mini.jpg'),
-(N'Xe nhập khẩu', N'Những mẫu xe nguyên chiếc được nhập khẩu trực tiếp từ các thị trường quốc tế (Thái Lan, Indonesia, Ý...). Nổi bật với tiêu chuẩn hoàn thiện khắt khe, thiết kế độc quyền và luôn được giới chơi xe săn đón nồng nhiệt.', 'img/import.jpg');
+(N'Xe điện', N'Giải pháp di chuyển của tương lai, hoàn toàn không phát thải khí nhà kính và vận hành cực kỳ êm ái. Chi phí vận hành vô cùng tiết kiệm, tích hợp nhiều tính năng thông minh và không yêu cầu bảo dưỡng động cơ phức tạp.', 'img/dien.jpg');
 
 INSERT INTO brands (description, logo_url, name) VALUES(N'Hãng xe Nhật Bản', 'https://imageshare13.blob.core.windows.net/logo/honda.png', 'Honda');
 INSERT INTO brands (description, logo_url, name) VALUES(N'Hãng xe thể thao', 'https://imageshare13.blob.core.windows.net/logo/yamaha.webp', 'Yamaha');
@@ -847,3 +861,12 @@ INSERT INTO ProductPromotions (promotion_id, product_id) VALUES
 (9, 19), 
 (10, 2), 
 (10, 4); 
+
+INSERT INTO CancellationReasons (code, content, display_order)
+VALUES 
+    ('CHANGE_MIND', N'Tôi muốn đổi sang dòng xe / màu xe khác', 1),
+    ('FOUND_BETTER_PRICE', N'Tôi tìm thấy nơi khác có giá tốt hơn', 2),
+    ('HIGH_SHIPPING', N'Phí vận chuyển cao / Thời gian chờ giao xe quá lâu', 3),
+    ('FINANCE_ISSUE', N'Tôi gặp khó khăn về thủ tục thanh toán / trả góp', 4),
+    ('JUST_CANCEL', N'Tôi chỉ đổi ý, không muốn mua nữa', 5),
+    ('OTHER', N'Lý do khác', 99);

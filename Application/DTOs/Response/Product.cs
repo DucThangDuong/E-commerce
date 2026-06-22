@@ -62,4 +62,11 @@ namespace Application.DTOs.Response
         public DateTime? EndDate { get; set; }
         public ResProductDto Product { get; set; } = null!;
     }
+
+    public class ResSimpleFeaturedProductDto
+    {
+        public int ProductId { get; set; }
+        public int? DisplayOrder { get; set; }
+        public string? FirstColorImageUrl { get; set; }
+    }
 }

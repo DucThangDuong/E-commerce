@@ -1,4 +1,5 @@
-﻿using Application.Interfaces;
+﻿
+using Application.Interfaces;
 using Domain.Entities;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,8 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
     public virtual DbSet<Brand> Brands { get; set; }
 
+    public virtual DbSet<CancellationReason> CancellationReasons { get; set; }
+
     public virtual DbSet<Cart> Carts { get; set; }
 
     public virtual DbSet<Category> Categories { get; set; }
@@ -34,6 +37,8 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
     public virtual DbSet<Inventory> Inventories { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
+
+    public virtual DbSet<OrderCancellation> OrderCancellations { get; set; }
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
 
@@ -60,9 +65,9 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
         modelBuilder.AddOutboxStateEntity();
         modelBuilder.Entity<Brand>(entity =>
         {
-            entity.HasKey(e => e.BrandId).HasName("PK__Brands__5E5A8E27FC90C394");
+            entity.HasKey(e => e.BrandId).HasName("PK__Brands__5E5A8E27F5A2F902");
 
-            entity.HasIndex(e => e.Name, "UQ__Brands__72E12F1B3E65118E").IsUnique();
+            entity.HasIndex(e => e.Name, "UQ__Brands__72E12F1BB85B5E57").IsUnique();
 
             entity.Property(e => e.BrandId).HasColumnName("brand_id");
             entity.Property(e => e.Description).HasColumnName("description");
@@ -75,13 +80,33 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
                 .HasColumnName("name");
         });
 
+        modelBuilder.Entity<CancellationReason>(entity =>
+        {
+            entity.HasKey(e => e.ReasonId).HasName("PK__Cancella__846BB55494796AAA");
+
+            entity.HasIndex(e => e.Code, "UQ__Cancella__357D4CF9FF78794A").IsUnique();
+
+            entity.Property(e => e.ReasonId).HasColumnName("reason_id");
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasColumnName("code");
+            entity.Property(e => e.Content)
+                .HasMaxLength(255)
+                .HasColumnName("content");
+            entity.Property(e => e.DisplayOrder).HasColumnName("display_order");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+        });
+
         modelBuilder.Entity<Cart>(entity =>
         {
-            entity.HasKey(e => e.CartId).HasName("PK__Cart__2EF52A2791F56936");
+            entity.HasKey(e => e.CartId).HasName("PK__Cart__2EF52A27B21BE6A1");
 
             entity.ToTable("Cart");
 
-            entity.HasIndex(e => new { e.CustomerId, e.ColorId }, "UQ__Cart__6C71F768EA226FFC").IsUnique();
+            entity.HasIndex(e => new { e.CustomerId, e.ColorId }, "UQ__Cart__6C71F768A9E61652").IsUnique();
 
             entity.Property(e => e.CartId).HasColumnName("cart_id");
             entity.Property(e => e.ColorId).HasColumnName("color_id");
@@ -91,16 +116,16 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
             entity.HasOne(d => d.Color).WithMany(p => p.Carts)
                 .HasForeignKey(d => d.ColorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Cart__color_id__2A164134");
+                .HasConstraintName("FK__Cart__color_id__2B0A656D");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.Carts)
                 .HasForeignKey(d => d.CustomerId)
-                .HasConstraintName("FK__Cart__customer_i__29221CFB");
+                .HasConstraintName("FK__Cart__customer_i__2A164134");
         });
 
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__D54EE9B406DF9D71");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Categori__D54EE9B49D2F267B");
 
             entity.Property(e => e.CategoryId).HasColumnName("category_id");
             entity.Property(e => e.Description)
@@ -117,9 +142,9 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
         modelBuilder.Entity<Coupon>(entity =>
         {
-            entity.HasKey(e => e.CouponId).HasName("PK__Coupons__58CF6389861A1362");
+            entity.HasKey(e => e.CouponId).HasName("PK__Coupons__58CF6389AD29BC32");
 
-            entity.HasIndex(e => e.Code, "UQ__Coupons__357D4CF9CD33F96F").IsUnique();
+            entity.HasIndex(e => e.Code, "UQ__Coupons__357D4CF979219BD7").IsUnique();
 
             entity.Property(e => e.CouponId).HasColumnName("coupon_id");
             entity.Property(e => e.Code)
@@ -167,9 +192,9 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
         modelBuilder.Entity<CouponUsage>(entity =>
         {
-            entity.HasKey(e => e.UsageId).HasName("PK__CouponUs__B6B13A02B9F2ECEC");
+            entity.HasKey(e => e.UsageId).HasName("PK__CouponUs__B6B13A02ED8A1D61");
 
-            entity.HasIndex(e => new { e.CouponId, e.CustomerId, e.OrderId }, "UQ__CouponUs__3C5F665244859F0B").IsUnique();
+            entity.HasIndex(e => new { e.CouponId, e.CustomerId, e.OrderId }, "UQ__CouponUs__3C5F6652B74E82CF").IsUnique();
 
             entity.Property(e => e.UsageId).HasColumnName("usage_id");
             entity.Property(e => e.CouponId).HasColumnName("coupon_id");
@@ -182,24 +207,24 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Coupon).WithMany(p => p.CouponUsages)
                 .HasForeignKey(d => d.CouponId)
-                .HasConstraintName("FK__CouponUsa__coupo__10566F31");
+                .HasConstraintName("FK__CouponUsa__coupo__114A936A");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.CouponUsages)
                 .HasForeignKey(d => d.CustomerId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CouponUsa__custo__114A936A");
+                .HasConstraintName("FK__CouponUsa__custo__123EB7A3");
 
             entity.HasOne(d => d.Order).WithMany(p => p.CouponUsages)
                 .HasForeignKey(d => d.OrderId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__CouponUsa__order__123EB7A3");
+                .HasConstraintName("FK__CouponUsa__order__1332DBDC");
         });
 
         modelBuilder.Entity<Customer>(entity =>
         {
-            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB85961B5A2F");
+            entity.HasKey(e => e.CustomerId).HasName("PK__Customer__CD65CB85CC530D0A");
 
-            entity.HasIndex(e => e.Email, "UQ__Customer__AB6E61649E974E0B").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Customer__AB6E61644DAEA4CA").IsUnique();
 
             entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.Address)
@@ -253,9 +278,9 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
         modelBuilder.Entity<FeaturedProduct>(entity =>
         {
-            entity.HasKey(e => e.FeaturedId).HasName("PK__Featured__8D1458B265048525");
+            entity.HasKey(e => e.FeaturedId).HasName("PK__Featured__8D1458B25A5A8E40");
 
-            entity.HasIndex(e => e.ProductId, "UQ__Featured__47027DF46BE1B263").IsUnique();
+            entity.HasIndex(e => e.ProductId, "UQ__Featured__47027DF4272F691B").IsUnique();
 
             entity.Property(e => e.FeaturedId).HasColumnName("featured_id");
             entity.Property(e => e.CreatedAt)
@@ -276,16 +301,16 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Product).WithOne(p => p.FeaturedProduct)
                 .HasForeignKey<FeaturedProduct>(d => d.ProductId)
-                .HasConstraintName("FK__FeaturedP__produ__03F0984C");
+                .HasConstraintName("FK__FeaturedP__produ__04E4BC85");
         });
 
         modelBuilder.Entity<Inventory>(entity =>
         {
-            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC49409BA7AD");
+            entity.HasKey(e => e.InventoryId).HasName("PK__Inventor__B59ACC49F04D943F");
 
             entity.ToTable("Inventory");
 
-            entity.HasIndex(e => e.ColorId, "UQ__Inventor__1143CECAEF7538AE").IsUnique();
+            entity.HasIndex(e => e.ColorId, "UQ__Inventor__1143CECAC40EEA08").IsUnique();
 
             entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
             entity.Property(e => e.ColorId).HasColumnName("color_id");
@@ -298,12 +323,12 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Color).WithOne(p => p.Inventory)
                 .HasForeignKey<Inventory>(d => d.ColorId)
-                .HasConstraintName("FK__Inventory__color__1F98B2C1");
+                .HasConstraintName("FK__Inventory__color__208CD6FA");
         });
 
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__Orders__465962299B5C9BBE");
+            entity.HasKey(e => e.OrderId).HasName("PK__Orders__46596229D002925D");
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.CouponId).HasColumnName("coupon_id");
@@ -316,9 +341,6 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime")
                 .HasColumnName("order_date");
-            entity.Property(e => e.UpdatedAt)
-                .HasColumnType("datetime")
-                .HasColumnName("updated_at");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("Pending")
@@ -326,20 +348,52 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
             entity.Property(e => e.TotalAmount)
                 .HasColumnType("decimal(18, 2)")
                 .HasColumnName("total_amount");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("Updated_at");
 
             entity.HasOne(d => d.Coupon).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CouponId)
                 .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK__Orders__coupon_i__71D1E811");
+                .HasConstraintName("FK__Orders__coupon_i__72C60C4A");
 
             entity.HasOne(d => d.Customer).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.CustomerId)
-                .HasConstraintName("FK__Orders__customer__70DDC3D8");
+                .HasConstraintName("FK__Orders__customer__71D1E811");
+        });
+
+        modelBuilder.Entity<OrderCancellation>(entity =>
+        {
+            entity.HasKey(e => e.CancellationId).HasName("PK__OrderCan__4ED4366D5465CA95");
+
+            entity.HasIndex(e => e.OrderId, "UQ__OrderCan__46596228C68581B8").IsUnique();
+
+            entity.Property(e => e.CancellationId).HasColumnName("cancellation_id");
+            entity.Property(e => e.CanceledAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("canceled_at");
+            entity.Property(e => e.CanceledByUserId).HasColumnName("canceled_by_user_id");
+            entity.Property(e => e.CustomReasonText)
+                .HasMaxLength(500)
+                .HasColumnName("custom_reason_text");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.ReasonId).HasColumnName("reason_id");
+
+            entity.HasOne(d => d.Order).WithOne(p => p.OrderCancellation)
+                .HasForeignKey<OrderCancellation>(d => d.OrderId)
+                .HasConstraintName("FK__OrderCanc__order__4D5F7D71");
+
+            entity.HasOne(d => d.Reason).WithMany(p => p.OrderCancellations)
+                .HasForeignKey(d => d.ReasonId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__OrderCanc__reaso__4E53A1AA");
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
         {
-            entity.HasKey(e => new { e.OrderId, e.ColorId }).HasName("PK__OrderIte__E74D5EC54FA9D696");
+            entity.HasKey(e => new { e.OrderId, e.ColorId }).HasName("PK__OrderIte__E74D5EC52838F27C");
 
             entity.Property(e => e.OrderId).HasColumnName("order_id");
             entity.Property(e => e.ColorId).HasColumnName("color_id");
@@ -351,16 +405,16 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
             entity.HasOne(d => d.Color).WithMany(p => p.OrderItems)
                 .HasForeignKey(d => d.ColorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__OrderItem__color__245D67DE");
+                .HasConstraintName("FK__OrderItem__color__25518C17");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderItems)
                 .HasForeignKey(d => d.OrderId)
-                .HasConstraintName("FK__OrderItem__order__236943A5");
+                .HasConstraintName("FK__OrderItem__order__245D67DE");
         });
 
         modelBuilder.Entity<OrderShippingDetail>(entity =>
         {
-            entity.HasKey(e => e.OrderId).HasName("PK__OrderShi__46596229867A78C7");
+            entity.HasKey(e => e.OrderId).HasName("PK__OrderShi__4659622902B06DEA");
 
             entity.Property(e => e.OrderId)
                 .ValueGeneratedNever()
@@ -381,14 +435,14 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Order).WithOne(p => p.OrderShippingDetail)
                 .HasForeignKey<OrderShippingDetail>(d => d.OrderId)
-                .HasConstraintName("FK__OrderShip__order__06CD04F7");
+                .HasConstraintName("FK__OrderShip__order__07C12930");
         });
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__ED1FC9EAEBE7E962");
+            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__ED1FC9EAB68452E7");
 
-            entity.HasIndex(e => e.OrderId, "UQ__Payments__4659622846F206DA").IsUnique();
+            entity.HasIndex(e => e.OrderId, "UQ__Payments__46596228372AF7DB").IsUnique();
 
             entity.Property(e => e.PaymentId).HasColumnName("payment_id");
             entity.Property(e => e.Amount)
@@ -415,12 +469,12 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Order).WithOne(p => p.Payment)
                 .HasForeignKey<Payment>(d => d.OrderId)
-                .HasConstraintName("FK__Payments__order___0B91BA14");
+                .HasConstraintName("FK__Payments__order___0C85DE4D");
         });
 
         modelBuilder.Entity<Product>(entity =>
         {
-            entity.HasKey(e => e.ProductId).HasName("PK__Products__47027DF53C840DFC");
+            entity.HasKey(e => e.ProductId).HasName("PK__Products__47027DF5BFD58795");
 
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.BasePrice)
@@ -450,13 +504,13 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
                     "ProductPromotion",
                     r => r.HasOne<Promotion>().WithMany()
                         .HasForeignKey("PromotionId")
-                        .HasConstraintName("FK__ProductPr__promo__7D439ABD"),
+                        .HasConstraintName("FK__ProductPr__promo__7E37BEF6"),
                     l => l.HasOne<Product>().WithMany()
                         .HasForeignKey("ProductId")
-                        .HasConstraintName("FK__ProductPr__produ__7C4F7684"),
+                        .HasConstraintName("FK__ProductPr__produ__7D439ABD"),
                     j =>
                     {
-                        j.HasKey("ProductId", "PromotionId").HasName("PK__ProductP__E5C9E8A3770695E0");
+                        j.HasKey("ProductId", "PromotionId").HasName("PK__ProductP__E5C9E8A37D839CD5");
                         j.ToTable("ProductPromotions");
                         j.IndexerProperty<int>("ProductId").HasColumnName("product_id");
                         j.IndexerProperty<int>("PromotionId").HasColumnName("promotion_id");
@@ -465,7 +519,7 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
         modelBuilder.Entity<ProductColor>(entity =>
         {
-            entity.HasKey(e => e.ColorId).HasName("PK__ProductC__1143CECB331D08D3");
+            entity.HasKey(e => e.ColorId).HasName("PK__ProductC__1143CECB285ACEE7");
 
             entity.Property(e => e.ColorId).HasColumnName("color_id");
             entity.Property(e => e.ColorName)
@@ -479,12 +533,12 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Product).WithMany(p => p.ProductColors)
                 .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK__ProductCo__produ__75A278F5");
+                .HasConstraintName("FK__ProductCo__produ__76969D2E");
         });
 
         modelBuilder.Entity<ProductImage>(entity =>
         {
-            entity.HasKey(e => e.ImageId).HasName("PK__ProductI__DC9AC9556B5B66BF");
+            entity.HasKey(e => e.ImageId).HasName("PK__ProductI__DC9AC9552DAD53C6");
 
             entity.Property(e => e.ImageId).HasColumnName("image_id");
             entity.Property(e => e.ColorId).HasColumnName("color_id");
@@ -506,16 +560,16 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Color).WithMany(p => p.ProductImages)
                 .HasForeignKey(d => d.ColorId)
-                .HasConstraintName("FK__ProductIm__color__18EBB532");
+                .HasConstraintName("FK__ProductIm__color__19DFD96B");
 
             entity.HasOne(d => d.Product).WithMany(p => p.ProductImages)
                 .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK__ProductIm__produ__17F790F9");
+                .HasConstraintName("FK__ProductIm__produ__18EBB532");
         });
 
         modelBuilder.Entity<ProductSpecification>(entity =>
         {
-            entity.HasKey(e => new { e.ProductId, e.SpecId }).HasName("PK__ProductS__286571A3A1E921D6");
+            entity.HasKey(e => new { e.ProductId, e.SpecId }).HasName("PK__ProductS__286571A35EE12E57");
 
             entity.Property(e => e.ProductId).HasColumnName("product_id");
             entity.Property(e => e.SpecId).HasColumnName("spec_id");
@@ -525,16 +579,16 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
             entity.HasOne(d => d.Product).WithMany(p => p.ProductSpecifications)
                 .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK__ProductSp__produ__787EE5A0");
+                .HasConstraintName("FK__ProductSp__produ__797309D9");
 
             entity.HasOne(d => d.Spec).WithMany(p => p.ProductSpecifications)
                 .HasForeignKey(d => d.SpecId)
-                .HasConstraintName("FK__ProductSp__spec___797309D9");
+                .HasConstraintName("FK__ProductSp__spec___7A672E12");
         });
 
         modelBuilder.Entity<Promotion>(entity =>
         {
-            entity.HasKey(e => e.PromotionId).HasName("PK__Promotio__2CB9556BFC5BCA14");
+            entity.HasKey(e => e.PromotionId).HasName("PK__Promotio__2CB9556B7668F839");
 
             entity.Property(e => e.PromotionId).HasColumnName("promotion_id");
             entity.Property(e => e.CreatedAt)
@@ -564,9 +618,9 @@ public partial class EcommerceContext : DbContext, IAppReadDbContext
 
         modelBuilder.Entity<Specification>(entity =>
         {
-            entity.HasKey(e => e.SpecId).HasName("PK__Specific__F670C56749A7C39A");
+            entity.HasKey(e => e.SpecId).HasName("PK__Specific__F670C567E3B1B7DF");
 
-            entity.HasIndex(e => e.SpecName, "UQ__Specific__B99801B1CA83B5B8").IsUnique();
+            entity.HasIndex(e => e.SpecName, "UQ__Specific__B99801B17CF70B7D").IsUnique();
 
             entity.Property(e => e.SpecId).HasColumnName("spec_id");
             entity.Property(e => e.DisplayOrder)
