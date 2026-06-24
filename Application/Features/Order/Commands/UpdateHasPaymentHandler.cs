@@ -88,6 +88,16 @@ namespace Application.Features.Order.Commands
                         order.Payment.ProviderTransactionId = request.TransactionNo;
                     }
 
+                    var colorIds = await _db.OrderItems
+                                        .Where(oi => oi.OrderId == order.OrderId)
+                                        .Select(oi => oi.ColorId)
+                                        .ToListAsync(ct);
+                                        
+                    if (colorIds.Any())
+                    {
+                        await _unitOfWork.CartRepository.DeleteCartItemsAsync(order.CustomerId, colorIds);
+                    }
+
                     await _notificationService.SendMessageToOrderId(
                         order.OrderId.ToString(), 
                         $"Thanh toán thành công đơn hàng #{order.OrderId}"

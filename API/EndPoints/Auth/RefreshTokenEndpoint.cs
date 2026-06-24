@@ -17,8 +17,9 @@ public class RefreshTokenEndpoint : EndpointWithoutRequest
 
     public override async Task HandleAsync(CancellationToken ct)
     {
+        var accessToken = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Replace("Bearer ", "");
         var refreshToken = HttpContext.Request.Cookies["refreshToken"];
-        var result = await Mediator.Send(new RefreshTokenCommand(refreshToken), ct);
+        var result = await Mediator.Send(new RefreshTokenCommand(accessToken, refreshToken), ct);
 
         if (result.IsSuccess)
         {

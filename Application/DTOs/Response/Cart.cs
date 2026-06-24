@@ -21,6 +21,8 @@ namespace Application.DTOs.Response
         public string? Description { get; set; }
 
         public decimal BasePrice { get; set; }
+        public decimal DiscountedPrice { get; set; }
+        public ResProductPromotionDto? AppliedPromotion { get; set; }
         public int StockQuantity { get; set; }
         public List<string>? imageUrl { get; set; }
     }

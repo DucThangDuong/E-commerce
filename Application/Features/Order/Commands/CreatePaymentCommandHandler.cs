@@ -217,9 +217,6 @@ namespace Application.Features.Order.Commands
                     }
                     await _unitOfWork.SaveChangesAsync(ct);
                 }
-
-                await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
-
                 if (request.TypePayment == 0) // COD
                 {
                     var response = new CreatePaymentResponse
@@ -227,6 +224,7 @@ namespace Application.Features.Order.Commands
                         OrderId = newOrder.OrderId,
                         Message = "Đặt hàng thành công (COD)."
                     };
+                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
                     return Result<CreatePaymentResponse>.Success(response, 201);
                 }
                 else // VnPay

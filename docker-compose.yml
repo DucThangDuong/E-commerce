@@ -23,6 +23,7 @@ services:
       - VnPayConfig__HashSecret=${HashSecret}
       - VnPayConfig__BaseUrl=${BaseUrl}
       - VnPayConfig__ReturnUrl=${ReturnUrl}
+      - VnPayConfig__IpnUrl=${IpnUrl}
       - VnPayConfig__Version=${Version}
       - FrontendUrl=https://e-commerce-frontend-umber-eight.vercel.app/
     depends_on:

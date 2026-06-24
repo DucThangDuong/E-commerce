@@ -37,11 +37,28 @@ namespace Infrastructure.Repositories
 
         public async Task<Dictionary<int, decimal>> GetPricesByColorIdsAsync(List<int> colorIds, CancellationToken ct = default)
         {
-            return await _context.ProductColors
-                .Include(pc => pc.Product)
+            var data = await _context.ProductColors
                 .AsNoTracking()
                 .Where(pc => colorIds.Contains(pc.ColorId))
-                .ToDictionaryAsync(pc => pc.ColorId, pc => pc.Product.BasePrice + (pc.PriceAdjustment ?? 0), ct);
+                .Select(pc => new 
+                {
+                    pc.ColorId,
+                    BasePrice = pc.Product.BasePrice,
+                    PriceAdjustment = pc.PriceAdjustment ?? 0,
+                    BestDiscount = pc.Product.Promotions
+                        .Where(p => p.IsActive == true && p.StartDate <= DateTime.UtcNow && p.EndDate >= DateTime.UtcNow)
+                        .Select(p => p.DiscountType.ToLower().Contains("percent") 
+                            ? (pc.Product.BasePrice * p.DiscountValue / 100M) 
+                            : p.DiscountValue)
+                        .OrderByDescending(x => x)
+                        .FirstOrDefault()
+                })
+                .ToListAsync(ct);
+
+            return data.ToDictionary(
+                x => x.ColorId, 
+                x => (x.BasePrice - x.BestDiscount) + x.PriceAdjustment
+            );
         }
     }
 }

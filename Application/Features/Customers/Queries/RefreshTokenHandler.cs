@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace Application.Features.Customers.Queries
 {
-    public record RefreshTokenCommand(string? RefreshToken) : IRequest<Result<LoginResponse>>;
+    public record RefreshTokenCommand(string? AccessToken, string? RefreshToken) : IRequest<Result<LoginResponse>>;
 
     public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<LoginResponse>>
     {
@@ -25,14 +25,14 @@ namespace Application.Features.Customers.Queries
             try
             {
 
-                if (string.IsNullOrEmpty(command.RefreshToken))
+                if (string.IsNullOrEmpty(command.RefreshToken) || string.IsNullOrEmpty(command.AccessToken))
                 {
-                    return Result<LoginResponse>.Failure("Không tìm thấy Refresh Token.", 400);
+                    return Result<LoginResponse>.Failure("Không tìm thấy Token.", 400);
                 }
-                var principal = _jwtTokenService.GetPrincipalFromExpiredToken(command.RefreshToken);
+                var principal = _jwtTokenService.GetPrincipalFromExpiredToken(command.AccessToken);
                 string? userIdString = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userIdString))
-                {
+                {   
                     return Result<LoginResponse>.Failure("Token không hợp lệ.", 401);
                 }
                 int userId = int.Parse(userIdString);

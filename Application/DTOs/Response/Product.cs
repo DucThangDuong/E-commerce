@@ -21,6 +21,14 @@ namespace Application.DTOs.Response
         public string SpecValue { get; set; } = null!;
     }
 
+    public class ResProductPromotionDto
+    {
+        public string PromotionName { get; set; } = null!;
+        public string DiscountType { get; set; } = null!;
+        public decimal DiscountValue { get; set; }
+        public decimal AmountReduced { get; set; }
+    }
+
     public class ResProductDto
     {
         public int ProductId { get; set; }
@@ -34,6 +42,8 @@ namespace Application.DTOs.Response
         public string? Description { get; set; }
 
         public decimal BasePrice { get; set; }
+        public decimal DiscountedPrice { get; set; } 
+        public ResProductPromotionDto? AppliedPromotion { get; set; }
         public List<string>? ImageUrls { get; set; } 
         public List<ResProductColorDto> Colors { get; set; } = new List<ResProductColorDto>();
         public List<ResProductSpecificationDto>? Specifications { get; set; }

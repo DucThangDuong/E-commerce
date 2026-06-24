@@ -39,6 +39,26 @@ namespace Application.Features.Products.Queries
                         .Select(e => new ResProductDto
                         {
                             BasePrice = e.BasePrice,
+                            DiscountedPrice = e.BasePrice - (e.Promotions
+                                .Where(p => p.IsActive == true && p.StartDate <= DateTime.UtcNow && p.EndDate >= DateTime.UtcNow)
+                                .Select(p => p.DiscountType.ToLower().Contains("percent") 
+                                    ? (e.BasePrice * p.DiscountValue / 100M) 
+                                    : p.DiscountValue)
+                                .OrderByDescending(x => x)
+                                .FirstOrDefault()),
+                            AppliedPromotion = e.Promotions
+                                .Where(p => p.IsActive == true && p.StartDate <= DateTime.UtcNow && p.EndDate >= DateTime.UtcNow)
+                                .Select(p => new ResProductPromotionDto
+                                {
+                                    PromotionName = p.Name,
+                                    DiscountType = p.DiscountType,
+                                    DiscountValue = p.DiscountValue,
+                                    AmountReduced = p.DiscountType.ToLower().Contains("percent") 
+                                        ? (e.BasePrice * p.DiscountValue / 100M) 
+                                        : p.DiscountValue
+                                })
+                                .OrderByDescending(p => p.AmountReduced)
+                                .FirstOrDefault(),
                             CategoryId = e.CategoryId,
                             BrandId = e.BrandId,
                             Description = e.Description,

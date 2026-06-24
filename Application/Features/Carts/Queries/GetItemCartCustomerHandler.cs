@@ -26,7 +26,27 @@ namespace Application.Features.Carts.Queries
                     .Where(e => e.CustomerId == query.CustomerId)
                     .Select(e => new ResCartDto
                     {
-                        BasePrice = e.Color.Product.BasePrice,
+                        BasePrice = e.Color.Product.BasePrice + (e.Color.PriceAdjustment ?? 0),
+                        DiscountedPrice = (e.Color.Product.BasePrice - (e.Color.Product.Promotions
+                            .Where(p => p.IsActive == true && p.StartDate <= DateTime.UtcNow && p.EndDate >= DateTime.UtcNow)
+                            .Select(p => p.DiscountType.ToLower().Contains("percent") 
+                                ? (e.Color.Product.BasePrice * p.DiscountValue / 100M) 
+                                : p.DiscountValue)
+                            .OrderByDescending(x => x)
+                            .FirstOrDefault())) + (e.Color.PriceAdjustment ?? 0),
+                        AppliedPromotion = e.Color.Product.Promotions
+                            .Where(p => p.IsActive == true && p.StartDate <= DateTime.UtcNow && p.EndDate >= DateTime.UtcNow)
+                            .Select(p => new ResProductPromotionDto
+                            {
+                                PromotionName = p.Name,
+                                DiscountType = p.DiscountType,
+                                DiscountValue = p.DiscountValue,
+                                AmountReduced = p.DiscountType.ToLower().Contains("percent") 
+                                    ? (e.Color.Product.BasePrice * p.DiscountValue / 100M) 
+                                    : p.DiscountValue
+                            })
+                            .OrderByDescending(p => p.AmountReduced)
+                            .FirstOrDefault(),
                         CartId = e.CartId,
                         CategoryId = e.Color.Product.CategoryId,
                         Description = e.Color.Product.Description,
