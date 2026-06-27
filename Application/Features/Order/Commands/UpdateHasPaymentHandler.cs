@@ -90,7 +90,7 @@ namespace Application.Features.Order.Commands
 
                     var colorIds = await _db.OrderItems
                                         .Where(oi => oi.OrderId == order.OrderId)
-                                        .Select(oi => oi.ColorId)
+                                        .Select(oi => oi.Vehicle.ColorId)
                                         .ToListAsync(ct);
                                         
                     if (colorIds.Any())

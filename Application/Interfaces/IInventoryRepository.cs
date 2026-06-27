@@ -8,8 +8,9 @@ namespace Application.Interfaces
 {
     public interface IInventoryRepository
     {
-        public Task<int> GetStockQuantity(int productId);
+        Task<int> GetStockQuantity(int productId);
         Task<Dictionary<int, int>> GetStockByColorIdsAsync(List<int> colorIds, CancellationToken ct = default);
-        Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default);
+        Task<List<Domain.Entities.Vehicle>> ReserveVehiclesAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default);
+        Task ReleaseVehiclesAsync(List<int> vehicleIds, CancellationToken ct = default);
     }
 }

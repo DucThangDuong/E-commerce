@@ -32,23 +32,39 @@ namespace Application.Features.Order.Queries
                         OrderDate = e.OrderDate,
                         UpdatedAt = e.UpdatedAt,
                         TotalAmount = e.TotalAmount,
-                        OriginalAmount = e.OrderItems.Sum(oi => oi.Quantity * oi.UnitPriceAtPurchase),
+                        OriginalAmount = e.OrderItems.Sum(oi => oi.UnitPriceAtPurchase),
                         DiscountAmount = e.DiscountAmount,
                         Status = e.Status,
                         PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "",
                         OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
                         {
-                            name = oi.Color.Product.Name,
-                            ColorId = oi.ColorId,
-                            ColorName = oi.Color.ColorName,
-                            quantity = oi.Quantity,
+                            name = oi.Vehicle.Color.Product.Name,
+                            ColorId = oi.Vehicle.ColorId,
+                            ColorName = oi.Vehicle.Color.ColorName,
+                            quantity = 1,
                             unitPriceAtPurchase = oi.UnitPriceAtPurchase,
-                            basePrice = oi.Color.Product.BasePrice,
-                            imageUrl = oi.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == oi.ColorId).Select(pi => pi.ImageUrl).ToList()
+                            basePrice = oi.Vehicle.Color.Product.BasePrice,
+                            imageUrl = oi.Vehicle.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == oi.Vehicle.ColorId).Select(pi => pi.ImageUrl).ToList()
                         }).ToList()
                     })
                     .OrderByDescending(e => e.OrderDate)
                     .ToListAsync(cancellationToken);
+
+                foreach (var order in orders)
+                {
+                    order.OrderItems = order.OrderItems
+                        .GroupBy(oi => new { oi.ColorId, oi.ColorName, oi.name, oi.unitPriceAtPurchase, oi.basePrice })
+                        .Select(g => new ResOrderWithItems
+                        {
+                            ColorId = g.Key.ColorId,
+                            ColorName = g.Key.ColorName,
+                            name = g.Key.name,
+                            unitPriceAtPurchase = g.Key.unitPriceAtPurchase,
+                            basePrice = g.Key.basePrice,
+                            quantity = g.Sum(x => x.quantity),
+                            imageUrl = g.First().imageUrl
+                        }).ToList();
+                }
                 return Result<List<ResOrder>>.Success(orders);
             }
             catch (Exception ex)

@@ -67,6 +67,8 @@ CREATE TABLE Coupons (
     created_at DATETIME DEFAULT GETDATE()
 );
 GO
+
+
 CREATE TABLE Products (
     product_id INT IDENTITY(1,1) PRIMARY KEY,
     category_id INT NOT NULL,
@@ -80,26 +82,25 @@ CREATE TABLE Products (
 );
 GO
 
-CREATE TABLE Orders (
-    order_id INT IDENTITY(1,1) PRIMARY KEY,
-    customer_id INT NOT NULL,
-    order_date DATETIME DEFAULT GETDATE(),
-    Updated_at DATETIME DEFAULT GETDATE(),
-    coupon_id INT NULL,
-    discount_amount DECIMAL(15, 2) DEFAULT 0,
-    total_amount DECIMAL(18, 2) NOT NULL,
-    status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
-    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id) ON DELETE CASCADE,
-    FOREIGN KEY (coupon_id) REFERENCES Coupons(coupon_id) ON DELETE SET NULL
-);
-GO
-
 CREATE TABLE ProductColors (
     color_id INT IDENTITY(1,1) PRIMARY KEY,
     product_id INT NOT NULL,
     color_name NVARCHAR(50) NOT NULL,
     price_adjustment DECIMAL(15, 2) DEFAULT 0, 
     FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE
+);
+GO
+
+
+CREATE TABLE Vehicles (
+    vehicle_id INT IDENTITY(1,1) PRIMARY KEY,
+    color_id INT NOT NULL,
+    vin VARCHAR(50) UNIQUE NOT NULL, 
+    engine_number VARCHAR(50) UNIQUE NOT NULL,
+    status VARCHAR(20) DEFAULT 'Available' CHECK(status IN ('Available', 'Reserved', 'Sold', 'Maintenance')),
+    row_version ROWVERSION, 
+    imported_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (color_id) REFERENCES ProductColors(color_id) ON DELETE CASCADE
 );
 GO
 
@@ -133,6 +134,43 @@ CREATE TABLE FeaturedProducts (
 );
 GO
 
+CREATE TABLE ProductImages (
+    image_id INT IDENTITY(1,1) PRIMARY KEY,
+    product_id INT NOT NULL,
+    color_id INT NULL,
+    image_url VARCHAR(500) NOT NULL,    
+    is_primary BIT DEFAULT 0,            
+    display_order INT DEFAULT 0,        
+    uploaded_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE,
+    FOREIGN KEY (color_id) REFERENCES ProductColors(color_id) 
+);
+GO
+
+
+CREATE TABLE Orders (
+    order_id INT IDENTITY(1,1) PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATETIME DEFAULT GETDATE(),
+    Updated_at DATETIME DEFAULT GETDATE(),
+    coupon_id INT NULL,
+    discount_amount DECIMAL(15, 2) DEFAULT 0,
+    total_amount DECIMAL(18, 2) NOT NULL,
+    status NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id) ON DELETE CASCADE,
+    FOREIGN KEY (coupon_id) REFERENCES Coupons(coupon_id) ON DELETE SET NULL
+);
+GO
+CREATE TABLE OrderItems (
+    order_item_id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL,
+    vehicle_id INT NOT NULL UNIQUE, 
+    unit_price_at_purchase DECIMAL(18, 2) NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
+    FOREIGN KEY (vehicle_id) REFERENCES Vehicles(vehicle_id)
+);
+GO
+
 CREATE TABLE OrderShippingDetails (
     order_id INT PRIMARY KEY, 
     recipient_name NVARCHAR(100) NOT NULL,
@@ -159,7 +197,7 @@ CREATE TABLE CouponUsages (
     usage_id INT IDENTITY(1,1) PRIMARY KEY,
     coupon_id INT NOT NULL,
     customer_id INT NOT NULL, 
-    order_id INT NOT NULL,    
+    order_id INT NOT NULL,  
     used_at DATETIME DEFAULT GETDATE(),
     UNIQUE (coupon_id, customer_id, order_id), 
     FOREIGN KEY (coupon_id) REFERENCES Coupons(coupon_id) ON DELETE CASCADE,
@@ -168,38 +206,24 @@ CREATE TABLE CouponUsages (
 );
 GO
 
-
-CREATE TABLE ProductImages (
-    image_id INT IDENTITY(1,1) PRIMARY KEY,
-    product_id INT NOT NULL,
-    color_id INT NULL,
-    image_url VARCHAR(500) NOT NULL,    
-    is_primary BIT DEFAULT 0,            
-    display_order INT DEFAULT 0,        
-    uploaded_at DATETIME DEFAULT GETDATE(),
-    FOREIGN KEY (product_id) REFERENCES Products(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (color_id) REFERENCES ProductColors(color_id) 
+CREATE TABLE CancellationReasons (
+    reason_id INT IDENTITY(1,1) PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    content NVARCHAR(255) NOT NULL,
+    is_active BIT DEFAULT 1 NOT NULL,
+    display_order INT DEFAULT 0 NOT NULL
 );
 GO
 
-CREATE TABLE Inventory (
-    inventory_id INT IDENTITY(1,1) PRIMARY KEY,
-    color_id INT NOT NULL UNIQUE, 
-    stock_quantity INT NOT NULL DEFAULT 0,
-    reserved_quantity INT NOT NULL DEFAULT 0,
-    last_updated DATETIME DEFAULT GETDATE(), 
-    FOREIGN KEY (color_id) REFERENCES ProductColors(color_id) ON DELETE CASCADE
-);
-GO
-
-CREATE TABLE OrderItems (
-    order_id INT NOT NULL,
-    color_id INT NOT NULL, 
-    quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price_at_purchase DECIMAL(18, 2) NOT NULL,
-    PRIMARY KEY (order_id, color_id), 
+CREATE TABLE OrderCancellations (
+    cancellation_id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL UNIQUE,
+    reason_id INT NOT NULL,
+    custom_reason_text NVARCHAR(500) NULL,
+    canceled_at DATETIME DEFAULT GETDATE() NOT NULL,
+    canceled_by_user_id INT NOT NULL,
     FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (color_id) REFERENCES ProductColors(color_id)
+    FOREIGN KEY (reason_id) REFERENCES CancellationReasons(reason_id) ON DELETE NO ACTION 
 );
 GO
 
@@ -213,23 +237,15 @@ CREATE TABLE Cart (
     FOREIGN KEY (color_id) REFERENCES ProductColors(color_id)
 );
 GO
-CREATE TABLE CancellationReasons (
-    reason_id INT IDENTITY(1,1) PRIMARY KEY,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    content NVARCHAR(255) NOT NULL,
-    is_active BIT DEFAULT 1 NOT NULL,
-    display_order INT DEFAULT 0 NOT NULL
-);
-GO
-CREATE TABLE OrderCancellations (
-    cancellation_id INT IDENTITY(1,1) PRIMARY KEY,
-    order_id INT NOT NULL UNIQUE,
-    reason_id INT NOT NULL,
-    custom_reason_text NVARCHAR(500) NULL,
-    canceled_at DATETIME DEFAULT GETDATE() NOT NULL,
-    canceled_by_user_id INT NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES Orders(order_id) ON DELETE CASCADE,
-    FOREIGN KEY (reason_id) REFERENCES CancellationReasons(reason_id) ON DELETE NO ACTION 
+
+CREATE TABLE WarrantyBooks (
+    warranty_id INT IDENTITY(1,1) PRIMARY KEY,
+    vehicle_id INT NOT NULL UNIQUE,
+    customer_id INT NOT NULL,
+    activated_at DATETIME DEFAULT GETDATE(),
+    valid_until DATETIME NOT NULL,
+    FOREIGN KEY (vehicle_id) REFERENCES Vehicles(vehicle_id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id) ON DELETE NO ACTION
 );
 GO
 CREATE TABLE [InboxState] (
@@ -250,7 +266,6 @@ CREATE TABLE [InboxState] (
 GO
 
 
--- 2. Tạo bảng OutboxMessage (Dùng để lưu event chuẩn bị gửi)
 CREATE TABLE [OutboxMessage] (
     [SequenceNumber] bigint NOT NULL IDENTITY,
     [EnqueueTime] datetime2 NULL,
@@ -277,7 +292,6 @@ CREATE TABLE [OutboxMessage] (
 );
 GO
 
--- 3. Tạo bảng OutboxState (Dùng để MassTransit quản lý trạng thái Worker)
 CREATE TABLE [OutboxState] (
     [OutboxId] uniqueidentifier NOT NULL,
     [LockId] uniqueidentifier NOT NULL,
@@ -290,11 +304,11 @@ CREATE TABLE [OutboxState] (
 
 
 INSERT INTO Categories (name, description, picture) VALUES
-(N'Xe số', N'Dòng xe phổ thông với thiết kế nhỏ gọn, động cơ bền bỉ và khả năng tiết kiệm nhiên liệu vượt trội. Phù hợp cho mọi nhu cầu từ đi học, đi làm đến chuyên chở hàng hóa hàng ngày. Dễ dàng bảo dưỡng với chi phí thấp nhất.', 'img/xe-so.jpg'),
-(N'Xe tay ga', N'Mang đến sự tiện lợi tối đa cho việc di chuyển trong đô thị đông đúc. Sở hữu thiết kế thời trang, cốp chứa đồ siêu rộng, thao tác vận hành đơn giản cùng nhiều tiện ích công nghệ hiện đại đi kèm như khóa thông minh, phanh ABS.', 'img/xe-tay-ga.jpg'),
-(N'Xe côn tay', N'Dòng xe mang đậm phong cách thể thao, dành cho những ai đam mê tốc độ và muốn làm chủ hoàn toàn sức mạnh động cơ. Thao tác bóp côn gảy số mang lại cảm giác lái phấn khích, khả năng tăng tốc ấn tượng và linh hoạt.', 'img/xe-con.jpg'),
-(N'Xe PKL', N'Những cỗ máy sức mạnh mang dung tích xy-lanh từ 175cc trở lên. Đây là biểu tượng của đẳng cấp, tốc độ và sự tự do. Âm thanh ống xả uy lực cùng loạt công nghệ hỗ trợ lái tiên tiến nhất, mang đến trải nghiệm làm chủ những cung đường lớn.', 'img/pkl.jpg'),
-(N'Xe điện', N'Giải pháp di chuyển của tương lai, hoàn toàn không phát thải khí nhà kính và vận hành cực kỳ êm ái. Chi phí vận hành vô cùng tiết kiệm, tích hợp nhiều tính năng thông minh và không yêu cầu bảo dưỡng động cơ phức tạp.', 'img/dien.jpg');
+(N'Xe số', N'Dòng xe phổ thông với thiết kế nhỏ gọn, động cơ bền bỉ và khả năng tiết kiệm nhiên liệu vượt trội. Phù hợp cho mọi nhu cầu từ đi học, đi làm đến chuyên chở hàng hóa hàng ngày. Dễ dàng bảo dưỡng với chi phí thấp nhất.', 'https://imageshare13.blob.core.windows.net/products/21/41.jpg'),
+(N'Xe tay ga', N'Mang đến sự tiện lợi tối đa cho việc di chuyển trong đô thị đông đúc. Sở hữu thiết kế thời trang, cốp chứa đồ siêu rộng, thao tác vận hành đơn giản cùng nhiều tiện ích công nghệ hiện đại đi kèm như khóa thông minh, phanh ABS.', 'https://imageshare13.blob.core.windows.net/products/8/15.webp'),
+(N'Xe côn tay', N'Dòng xe mang đậm phong cách thể thao, dành cho những ai đam mê tốc độ và muốn làm chủ hoàn toàn sức mạnh động cơ. Thao tác bóp côn gảy số mang lại cảm giác lái phấn khích, khả năng tăng tốc ấn tượng và linh hoạt.', 'https://imageshare13.blob.core.windows.net/products/6/11.jpg'),
+(N'Xe PKL', N'Những cỗ máy sức mạnh mang dung tích xy-lanh từ 175cc trở lên. Đây là biểu tượng của đẳng cấp, tốc độ và sự tự do. Âm thanh ống xả uy lực cùng loạt công nghệ hỗ trợ lái tiên tiến nhất, mang đến trải nghiệm làm chủ những cung đường lớn.', 'https://imageshare13.blob.core.windows.net/products/16/31.jpg'),
+(N'Xe điện', N'Giải pháp di chuyển của tương lai, hoàn toàn không phát thải khí nhà kính và vận hành cực kỳ êm ái. Chi phí vận hành vô cùng tiết kiệm, tích hợp nhiều tính năng thông minh và không yêu cầu bảo dưỡng động cơ phức tạp.', 'https://imageshare13.blob.core.windows.net/products/36/71.jpg');
 
 INSERT INTO brands (description, logo_url, name) VALUES(N'Hãng xe Nhật Bản', 'https://imageshare13.blob.core.windows.net/logo/honda.png', 'Honda');
 INSERT INTO brands (description, logo_url, name) VALUES(N'Hãng xe thể thao', 'https://imageshare13.blob.core.windows.net/logo/yamaha.webp', 'Yamaha');
@@ -410,17 +424,6 @@ INSERT INTO ProductColors (product_id, color_name, price_adjustment) VALUES
 (49, N'Đen', 0), (49, N'Đen Cam', 0),
 (50, N'Đen', 0), (50, N'Bạc', 0);
 
-INSERT INTO Inventory (color_id, stock_quantity) VALUES
-(1, 15), (2, 8), (3, 20), (4, 12), (5, 5), (6, 0), (7, 10), (8, 25), (9, 4), (10, 18),
-(11, 7), (12, 14), (13, 22), (14, 0), (15, 30), (16, 11), (17, 9), (18, 16), (19, 5), (20, 2),
-(21, 19), (22, 13), (23, 6), (24, 0), (25, 21), (26, 8), (27, 17), (28, 24), (29, 3), (30, 28),
-(31, 12), (32, 9), (33, 1), (34, 0), (35, 15), (36, 10), (37, 22), (38, 7), (39, 4), (40, 19),
-(41, 11), (42, 6), (43, 27), (44, 2), (45, 14), (46, 20), (47, 0), (48, 8), (49, 13), (50, 16),
-(51, 5), (52, 23), (53, 9), (54, 18), (55, 30), (56, 12), (57, 1), (58, 26), (59, 10), (60, 4),
-(61, 15), (62, 7), (63, 0), (64, 21), (65, 11), (66, 8), (67, 19), (68, 14), (69, 3), (70, 25),
-(71, 17), (72, 6), (73, 29), (74, 2), (75, 13), (76, 22), (77, 9), (78, 0), (79, 16), (80, 24),
-(81, 18), (82, 5), (83, 12), (84, 27), (85, 10), (86, 1), (87, 8), (88, 20), (89, 15), (90, 7),
-(91, 23), (92, 4), (93, 11), (94, 0), (95, 26), (96, 14), (97, 19), (98, 3), (99, 21), (100, 9);
 
 INSERT INTO Specifications (spec_name, display_order) VALUES
 (N'Khối lượng bản thân', 1),
@@ -819,14 +822,14 @@ INSERT INTO coupons ( code, name, discount_type, discount_value, min_order_value
 ( 'FLASHVIP', N'Flash Sale giảm 2 triệu', 'fixed_amount', 2000000, 40000000, NULL, 100, 99, 1, '2026-06-01 00:00:00', '2026-06-15 23:59:59', 1),
 ('HONDAFAN', N'Giảm 3% riêng xe Honda', 'percentage', 3, 20000000, 1500000, 300, 120, 2, '2026-04-01 00:00:00', '2026-07-31 23:59:59', 1),
 ('PKL10M', N'Giảm 10 triệu cho siêu xe PKL', 'fixed_amount', 10000000, 300000000, NULL, 50, 5, 1, '2026-01-01 00:00:00', '2026-12-31 23:59:59', 1),
-('TET2026', N'Lì xì đầu năm 2026', 'fixed_amount', 500000, 15000000, NULL, 2000, 1950, 1, '2026-01-01 00:00:00', '2026-02-28 23:59:59', 0), -- Đã hết hạn
+('TET2026', N'Lì xì đầu năm 2026', 'fixed_amount', 500000, 15000000, NULL, 2000, 1950, 1, '2026-01-01 00:00:00', '2026-02-28 23:59:59', 0), 
 ('EVO500', N'Giảm 500K xe điện xanh', 'fixed_amount', 500000, 20000000, NULL, 500, 80, 1, '2026-03-01 00:00:00', '2026-09-30 23:59:59', 1),
 ('GA1M', N'Giảm 1 triệu xe tay ga nữ', 'fixed_amount', 1000000, 30000000, NULL, 300, 250, 1, '2026-03-08 00:00:00', '2026-10-20 23:59:59', 1),
 ('LUXURY10', N'Giảm 10% dòng xe cao cấp', 'percentage', 10, 80000000, 5000000, 100, 20, 1, '2026-06-01 00:00:00', '2026-07-31 23:59:59', 1),
 ('STUDENT26', N'Hỗ trợ sinh viên tựu trường', 'fixed_amount', 800000, 15000000, NULL, 1000, 450, 1, '2026-08-01 00:00:00', '2026-10-31 23:59:59', 1);
 
 INSERT INTO promotions (name, discount_type, discount_value, start_date, end_date, is_active) VALUES
-(N'Xả hàng tồn kho cuối năm', 'percentage', 5, '2025-12-01 00:00:00', '2025-12-31 23:59:59', 0), -- Đã hết hạn
+(N'Xả hàng tồn kho cuối năm', 'percentage', 5, '2025-12-01 00:00:00', '2025-12-31 23:59:59', 0), 
 (N'Khuyến mãi Hè Sôi Động 2026', 'fixed_amount', 1000000, '2026-05-01 00:00:00', '2026-08-31 23:59:59', 1),
 (N'Tháng Vàng Honda - Lái xe thả ga', 'percentage', 3, '2026-06-01 00:00:00', '2026-06-30 23:59:59', 1),
 (N'Tuần lễ tay côn Yamaha', 'fixed_amount', 1500000, '2026-06-10 00:00:00', '2026-06-20 23:59:59', 1),
@@ -870,3 +873,66 @@ VALUES
     ('FINANCE_ISSUE', N'Tôi gặp khó khăn về thủ tục thanh toán / trả góp', 4),
     ('JUST_CANCEL', N'Tôi chỉ đổi ý, không muốn mua nữa', 5),
     ('OTHER', N'Lý do khác', 99);
+
+INSERT INTO FeaturedProducts(product_id,display_order)
+VALUES (3,1),(42,2),(5,3),(35,4)
+
+
+SET NOCOUNT ON;
+DECLARE @ColorCount INT;
+SELECT @ColorCount = COUNT(*) FROM ProductColors;
+IF @ColorCount = 0
+BEGIN
+    PRINT N'[LỖI]: Bảng ProductColors của bạn đang trống! Hãy thêm sản phẩm và màu trước.';
+    RETURN;
+END
+
+PRINT N'-> Tìm thấy ' + CAST(@ColorCount AS NVARCHAR(10)) + N' phân loại màu. Đang tiến hành sinh 100 xe...';
+IF OBJECT_ID('tempdb..#AvailableColors') IS NOT NULL DROP TABLE #AvailableColors;
+
+SELECT 
+    ROW_NUMBER() OVER (ORDER BY color_id) AS RowNum,
+    color_id 
+INTO #AvailableColors 
+FROM ProductColors;
+DECLARE @i INT = 1;
+WHILE @i <= 100
+BEGIN
+    DECLARE @TargetColorId INT;
+    DECLARE @Status VARCHAR(20);
+    DECLARE @Vin VARCHAR(50);
+    DECLARE @Engine VARCHAR(50);
+    DECLARE @Rand INT;
+    DECLARE @ColorIndex INT = ((@i - 1) % @ColorCount) + 1;
+    SELECT @TargetColorId = color_id FROM #AvailableColors WHERE RowNum = @ColorIndex;
+    SET @Rand = ABS(CHECKSUM(NEWID())) % 100;
+    IF @Rand < 65 
+        SET @Status = 'Available';
+    ELSE IF @Rand < 85 
+        SET @Status = 'Sold';
+    ELSE IF @Rand < 95 
+        SET @Status = 'Reserved';
+    ELSE 
+        SET @Status = 'Maintenance';
+    SET @Vin = 'RLC' 
+             + RIGHT('000' + CAST(@TargetColorId AS VARCHAR(10)), 3) 
+             + LEFT(REPLACE(CAST(NEWID() AS VARCHAR(36)), '-', ''), 11);
+    SET @Engine = 'E' 
+                + RIGHT('000' + CAST(@TargetColorId AS VARCHAR(10)), 3) 
+                + '-' 
+                + LEFT(REPLACE(CAST(NEWID() AS VARCHAR(36)), '-', ''), 8);
+    INSERT INTO Vehicles (color_id, vin, engine_number, status, imported_at)
+    VALUES (
+        @TargetColorId, 
+        @Vin, 
+        @Engine, 
+        @Status, 
+        DATEADD(DAY, - (ABS(CHECKSUM(NEWID())) % 60), GETDATE())
+    );
+
+    SET @i = @i + 1;
+END
+
+DROP TABLE #AvailableColors;
+PRINT N'-> HOÀN TẤT! Đã thêm thành công 100 xe vật lý vào kho.';
+GO

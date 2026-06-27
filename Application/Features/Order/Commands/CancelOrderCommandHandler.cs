@@ -30,8 +30,8 @@ namespace Application.Features.Order.Commands
 
                 var order = await _db.Orders
                     .Include(o => o.OrderItems)
-                        .ThenInclude(oi => oi.Color)
-                            .ThenInclude(pc => pc.Inventory)
+                        .ThenInclude(oi => oi.Vehicle)
+                            .ThenInclude(v => v.Color)
                     .FirstOrDefaultAsync(o => o.OrderId == request.OrderId && o.CustomerId == customerId, cancellationToken);
 
                 if (order == null)
@@ -73,19 +73,17 @@ namespace Application.Features.Order.Commands
                     CanceledByUserId = customerId
                 };
 
-                // Hoàn lại StockQuantity trong DB và Redis
-                foreach (var item in order.OrderItems)
-                {
-                    if (item.Color?.Inventory != null)
-                    {
-                        item.Color.Inventory.StockQuantity += item.Quantity;
+                var vehicleIdsToRelease = order.OrderItems.Select(oi => oi.VehicleId).ToList();
+                await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(vehicleIdsToRelease, cancellationToken);
 
-                        string cacheKeyStock = $"Color:Stock:{item.ColorId}";
-                        var exists = await _redisConnection.KeyExistsAsync(cacheKeyStock);
-                        if (exists)
-                        {
-                            await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Quantity);
-                        }
+                var groupedByColor = order.OrderItems.GroupBy(oi => oi.Vehicle.ColorId);
+                foreach (var g in groupedByColor)
+                {
+                    string cacheKeyStock = $"Color:Stock:{g.Key}";
+                    var exists = await _redisConnection.KeyExistsAsync(cacheKeyStock);
+                    if (exists)
+                    {
+                        await _redisConnection.StringIncrementAsync(cacheKeyStock, g.Count());
                     }
                 }
 

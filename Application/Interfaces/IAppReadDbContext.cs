@@ -19,9 +19,6 @@ namespace Application.Interfaces
         DbSet<Customer> Customers { get; }
 
         DbSet<FeaturedProduct> FeaturedProducts { get; }
-
-        DbSet<Inventory> Inventories { get; }
-
         DbSet<Order> Orders { get; }
 
         DbSet<OrderCancellation> OrderCancellations { get; }
@@ -43,5 +40,7 @@ namespace Application.Interfaces
         DbSet<Promotion> Promotions { get; }
 
         DbSet<Specification> Specifications { get; }
+        DbSet<Vehicle> Vehicles { get; }
+        DbSet<WarrantyBook> WarrantyBooks { get; }
     }
 }

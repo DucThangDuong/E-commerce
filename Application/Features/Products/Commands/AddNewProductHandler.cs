@@ -56,13 +56,13 @@ namespace Application.Features.Products.Commands
                         new ProductColor
                         {
                             ColorName = "Default",
-                            PriceAdjustment = 0,
-                            Inventory = new Inventory
+                            Vehicles = Enumerable.Range(0, command.StockQuantity).Select(i => new Vehicle
                             {
-                                StockQuantity = command.StockQuantity,
-                                ReservedQuantity = 0,
-                                LastUpdated = DateTime.UtcNow
-                            }
+                                Vin = $"UNKNOWN_VIN_{Guid.NewGuid().ToString().Substring(0, 8)}_{i}",
+                                EngineNumber = $"UNKNOWN_ENG_{Guid.NewGuid().ToString().Substring(0, 8)}_{i}",
+                                ImportedAt = DateTime.UtcNow,
+                                Status = "Available"
+                            }).ToList()
                         }
                     },
                     ProductImages = imageUrls.Select((url, index) => new ProductImage

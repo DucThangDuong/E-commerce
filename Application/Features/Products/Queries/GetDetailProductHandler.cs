@@ -70,7 +70,7 @@ namespace Application.Features.Products.Queries
                                 ColorId = pc.ColorId,
                                 ColorName = pc.ColorName,
                                 PriceAdjustment = pc.PriceAdjustment,
-                                StockQuantity = pc.Inventory != null ? pc.Inventory.StockQuantity : 0,
+                                StockQuantity = pc.Vehicles.Count(v => v.Status == "Available"),
                                 ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
                             }).ToList(),
                             Specifications = e.ProductSpecifications.Select(s => new ResProductSpecificationDto

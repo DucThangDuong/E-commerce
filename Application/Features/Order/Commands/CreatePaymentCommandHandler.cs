@@ -137,22 +137,24 @@ namespace Application.Features.Order.Commands
                 List<int> colorIds = itemUserWantBuy.Keys.ToList();
                 Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
+                var reservedVehicles = await _unitOfWork.InventoryRepository.ReserveVehiclesAsync(itemUserWantBuy, ct);
+
                 var orderItems = new List<OrderItem>();
-                foreach (var item in itemUserWantBuy)
+                foreach (var vehicle in reservedVehicles)
                 {
-                    if (!colorPrices.TryGetValue(item.Key, out decimal unitPrice))
+                    if (!colorPrices.TryGetValue(vehicle.ColorId, out decimal unitPrice))
                     {
                         foreach (var success in successItems)
                         {
                             await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
                         }
-                        return Result<CreatePaymentResponse>.Failure($"Sản phẩm màu ID {item.Key} không có thông tin giá hợp lệ.", 400);
+                        await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(reservedVehicles.Select(v => v.VehicleId).ToList(), ct);
+                        return Result<CreatePaymentResponse>.Failure($"Sản phẩm màu ID {vehicle.ColorId} không có thông tin giá hợp lệ.", 400);
                     }
 
                     orderItems.Add(new OrderItem
                     {
-                        ColorId = item.Key,
-                        Quantity = item.Value,
+                        VehicleId = vehicle.VehicleId,
                         UnitPriceAtPurchase = unitPrice
                     });
                 }
@@ -198,7 +200,6 @@ namespace Application.Features.Order.Commands
                 newOrder.Payment = newPayment;
 
                 await _unitOfWork.OrderRepository.AddAsync(newOrder);
-                await _unitOfWork.InventoryRepository.UpdateDecreaseStockAsync(itemUserWantBuy);
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 if (priceInfo.CouponId.HasValue)

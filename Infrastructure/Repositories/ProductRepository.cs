@@ -21,9 +21,9 @@ namespace Infrastructure.Repositories
 
         public async Task<int?> GetStockQuantityAsync(int productId, CancellationToken ct = default)
         {
-            return await _context.Inventories
-                .Where(i => i.Color.ProductId == productId)
-                .SumAsync(i => (int?)i.StockQuantity, ct);
+            return await _context.Vehicles
+                .Where(v => v.Color.ProductId == productId && v.Status == "Available")
+                .CountAsync(ct);
         }
         public async Task AddFeaturedProductAsync(FeaturedProduct featuredProduct, CancellationToken ct = default)
         {

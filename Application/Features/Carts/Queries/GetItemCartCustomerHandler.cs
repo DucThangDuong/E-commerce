@@ -55,7 +55,7 @@ namespace Application.Features.Carts.Queries
                         ColorId = e.ColorId,
                         ColorName = e.Color.ColorName,
                         Quantity = e.Quantity,
-                        StockQuantity = e.Color.Inventory != null ? e.Color.Inventory.StockQuantity : 0,
+                        StockQuantity = e.Color.Vehicles.Count(v => v.Status == "Available"),
                         imageUrl = e.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == e.ColorId).Select(pi => pi.ImageUrl).ToList(),
                     })
                     .ToListAsync(ct);

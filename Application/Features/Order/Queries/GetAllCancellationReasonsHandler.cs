@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Order.Queries
 {
+    public record GetAllCancellationReasonsQuery() : IRequest<Result<List<ResCancellationReasonDto>>>;
     public class GetAllCancellationReasonsHandler : IRequestHandler<GetAllCancellationReasonsQuery, Result<List<ResCancellationReasonDto>>>
     {
         private readonly IAppReadDbContext _db;

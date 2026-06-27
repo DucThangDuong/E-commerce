@@ -58,13 +58,18 @@ namespace Application.Consumers
                 }
 
                 var orderItems = await _db.OrderItems
+                    .Include(oi => oi.Vehicle)
                     .Where(oi => oi.OrderId == orderId)
                     .ToListAsync();
 
-                foreach (var item in orderItems)
+                var vehicleIdsToRelease = orderItems.Select(oi => oi.VehicleId).ToList();
+                await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(vehicleIdsToRelease);
+
+                var groupedByColor = orderItems.GroupBy(oi => oi.Vehicle.ColorId);
+                foreach (var g in groupedByColor)
                 {
-                    string cacheKeyStock = $"Color:Stock:{item.ColorId}";
-                    await _redisConnection.StringIncrementAsync(cacheKeyStock, item.Quantity);
+                    string cacheKeyStock = $"Color:Stock:{g.Key}";
+                    await _redisConnection.StringIncrementAsync(cacheKeyStock, g.Count());
                 }
 
                 await _unitOfWork.SaveChangesAsync();

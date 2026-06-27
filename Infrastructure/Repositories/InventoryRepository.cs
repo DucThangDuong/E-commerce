@@ -16,36 +16,58 @@ namespace Infrastructure.Repositories
         }
         public async Task<int> GetStockQuantity(int productId)
         {
-            return await _context.Inventories
-                .Where(i => i.Color.ProductId == productId)
-                .SumAsync(i => i.StockQuantity);
+            return await _context.Vehicles
+                .Where(v => v.Color.ProductId == productId && v.Status == "Available")
+                .CountAsync();
         }
 
         public async Task<Dictionary<int, int>> GetStockByColorIdsAsync(List<int> colorIds, CancellationToken ct = default)
         {
-            return await _context.Inventories
+            return await _context.Vehicles
                 .AsNoTracking()
-                .Where(i => colorIds.Contains(i.ColorId))
-                .ToDictionaryAsync(i => i.ColorId, i => i.StockQuantity, ct);
+                .Where(v => colorIds.Contains(v.ColorId) && v.Status == "Available")
+                .GroupBy(v => v.ColorId)
+                .Select(g => new { ColorId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.ColorId, x => x.Count, ct);
         }
 
-        public async Task<bool> UpdateDecreaseStockAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default)
+        public async Task<List<Domain.Entities.Vehicle>> ReserveVehiclesAsync(Dictionary<int, int>? purchasedItems, CancellationToken ct = default)
         {
+            var reservedVehicles = new List<Domain.Entities.Vehicle>();
             if (purchasedItems != null)
             {
-                var colorIds = purchasedItems.Keys.ToList();
-                var inventories = await _context.Inventories
-                    .Where(i => colorIds.Contains(i.ColorId))
-                    .ToListAsync(ct);
-                foreach (var inventory in inventories)
+                foreach (var item in purchasedItems)
                 {
-                    if (purchasedItems.TryGetValue(inventory.ColorId, out int purchasedQuantity))
+                    int colorId = item.Key;
+                    int quantity = item.Value;
+
+                    var vehiclesToReserve = await _context.Vehicles
+                        .Where(v => v.ColorId == colorId && v.Status == "Available")
+                        .Take(quantity)
+                        .ToListAsync(ct);
+
+                    if (vehiclesToReserve.Count < quantity)
                     {
-                        inventory.StockQuantity -= purchasedQuantity;
+                        throw new Exception($"Not enough stock for ColorId {colorId}.");
+                    }
+
+                    foreach (var v in vehiclesToReserve)
+                    {
+                        v.Status = "Reserved";
+                        reservedVehicles.Add(v);
                     }
                 }
             }
-            return true;
+            return reservedVehicles;
+        }
+
+        public async Task ReleaseVehiclesAsync(List<int> vehicleIds, CancellationToken ct = default)
+        {
+            var vehicles = await _context.Vehicles.Where(v => vehicleIds.Contains(v.VehicleId)).ToListAsync(ct);
+            foreach (var v in vehicles)
+            {
+                v.Status = "Available";
+            }
         }
     }
 }

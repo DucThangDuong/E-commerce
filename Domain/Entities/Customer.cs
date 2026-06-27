@@ -36,4 +36,6 @@ public partial class Customer
     public virtual ICollection<CouponUsage> CouponUsages { get; set; } = new List<CouponUsage>();
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+
+    public virtual ICollection<WarrantyBook> WarrantyBooks { get; set; } = new List<WarrantyBook>();
 }
