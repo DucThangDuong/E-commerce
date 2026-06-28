@@ -9,7 +9,7 @@
     role VARCHAR(20) DEFAULT 'User' CHECK(role IN ('User', 'Admin')),
     loginProvider VARCHAR(20) NULL CHECK(loginProvider IN ('Custom', 'Google')),
     googleId VARCHAR(255),
-    customAvatar VARCHAR(255) DEFAULT 'default-avatar.jpg',
+    customAvatar VARCHAR(255) DEFAULT 'https://imageshare13.blob.core.windows.net/avatar/default-avatar.webp',
     googleAvatar VARCHAR(255),
     isActive BIT DEFAULT 1
 );
@@ -896,7 +896,7 @@ SELECT
 INTO #AvailableColors 
 FROM ProductColors;
 DECLARE @i INT = 1;
-WHILE @i <= 100
+WHILE @i <= 150
 BEGIN
     DECLARE @TargetColorId INT;
     DECLARE @Status VARCHAR(20);

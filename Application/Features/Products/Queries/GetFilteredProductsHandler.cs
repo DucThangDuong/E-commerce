@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Application.Features.Products.Queries
 {
-    public record GetFilteredProductsQuery(List<int>? CategoryIds, List<int>? BrandIds, int Skip, int Take) : IRequest<Result<ResPagedProductDto>>;
+    public record GetFilteredProductsQuery(List<int>? CategoryIds, List<int>? BrandIds, string? Keyword, decimal? MinPrice, decimal? MaxPrice, int Skip, int Take) : IRequest<Result<ResPagedProductDto>>;
 
     public class GetFilteredProductsHandler : IRequestHandler<GetFilteredProductsQuery, Result<ResPagedProductDto>>
     {
@@ -24,10 +24,9 @@ namespace Application.Features.Products.Queries
         {
             try
             {
-                string cacheKey = $"products_{string.Join("_", query.CategoryIds ?? new List<int>())}" +
-                    $"_{string.Join("_", query.BrandIds ?? new List<int>())}_{query.Skip}_{query.Take}";
+                string cacheKey = $"products_{string.Join("_", query.CategoryIds ?? new List<int>())}_{string.Join("_", query.BrandIds ?? new List<int>())}";
 
-                var result = await _cache.GetOrSetAsync(cacheKey, async () => 
+                var allProducts = await _cache.GetOrSetAsync(cacheKey, async () => 
                 {
                     var dbQuery = _db.Products.AsNoTracking().AsQueryable();
 
@@ -41,12 +40,7 @@ namespace Application.Features.Products.Queries
                         dbQuery = dbQuery.Where(p => p.BrandId.HasValue && query.BrandIds.Contains(p.BrandId.Value));
                     }
 
-                    int totalItems = await dbQuery.CountAsync(ct);
-
-                    var products = await dbQuery
-                        .OrderBy(e => e.ProductId)
-                        .Skip(query.Skip)
-                        .Take(query.Take > 0 ? query.Take : 10)
+                    return await dbQuery
                         .Select(e => new ResProductDto
                         {
                             BasePrice = e.BasePrice,
@@ -86,19 +80,44 @@ namespace Application.Features.Products.Queries
                             }).ToList()
                         })
                         .ToListAsync(ct);
-
-                    int take = query.Take > 0 ? query.Take : 10;
-                    return new ResPagedProductDto
-                    {
-                        TotalItems = totalItems,
-                        TotalPages = (int)Math.Ceiling(totalItems / (double)take),
-                        CurrentPage = (query.Skip / take) + 1,
-                        PageSize = take,
-                        Products = products
-                    };
                 }, TimeSpan.FromMinutes(10));
 
-                return Result<ResPagedProductDto>.Success(result ?? new ResPagedProductDto());
+                var filteredProducts = allProducts?.AsEnumerable() ?? Enumerable.Empty<ResProductDto>();
+
+                if (!string.IsNullOrWhiteSpace(query.Keyword))
+                {
+                    filteredProducts = filteredProducts.Where(p => p.Name.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (query.MinPrice.HasValue)
+                {
+                    filteredProducts = filteredProducts.Where(p => p.BasePrice >= query.MinPrice.Value);
+                }
+
+                if (query.MaxPrice.HasValue)
+                {
+                    filteredProducts = filteredProducts.Where(p => p.BasePrice <= query.MaxPrice.Value);
+                }
+
+                int totalItems = filteredProducts.Count();
+                int take = query.Take > 0 ? query.Take : 10;
+
+                var pagedProducts = filteredProducts
+                    .OrderBy(p => p.ProductId)
+                    .Skip(query.Skip)
+                    .Take(take)
+                    .ToList();
+
+                var result = new ResPagedProductDto
+                {
+                    TotalItems = totalItems,
+                    TotalPages = (int)Math.Ceiling(totalItems / (double)take),
+                    CurrentPage = (query.Skip / take) + 1,
+                    PageSize = take,
+                    Products = pagedProducts
+                };
+
+                return Result<ResPagedProductDto>.Success(result);
             }
             catch (Exception ex)
             {

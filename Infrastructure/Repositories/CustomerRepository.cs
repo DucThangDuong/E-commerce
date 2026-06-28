@@ -57,7 +57,7 @@ namespace Infrastructure.Repositories
 
 
 
-        public async Task<int> UpdateCustomerProfileAsync(int customerId, string name, string? phoneNumber, string? address, CancellationToken ct = default)
+        public async Task<int> UpdateCustomerProfileAsync(int customerId, string? name, string? phoneNumber, string? address, CancellationToken ct = default)
         {
             return await _context.Customers
                 .Where(x => x.CustomerId == customerId)
@@ -73,6 +73,14 @@ namespace Infrastructure.Repositories
                 .Where(x => x.CustomerId == userId)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(x => x.CustomAvatar, n => AvatarUrl));
+        }
+
+        public async Task<int> UpdatePasswordAsync(int customerId, string newPasswordHash, CancellationToken ct = default)
+        {
+            return await _context.Customers
+                .Where(x => x.CustomerId == customerId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(x => x.PasswordHash, n => newPasswordHash), ct);
         }
     }
 }

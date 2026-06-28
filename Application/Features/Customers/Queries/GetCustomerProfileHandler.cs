@@ -21,19 +21,36 @@ namespace Application.Features.Customers.Queries
         {
             try
             {
-                var customer = await _db.Customers
+                var customerDb = await _db.Customers
                     .AsNoTracking()
+                    .Include(x => x.Orders)
                     .Where(x => x.CustomerId == query.CustomerId)
-                    .Select(x => new ResCustomerPrivateDto
-                    {
-                        avatarUrl = x.CustomAvatar,
-                        email = x.Email,
-                        id = x.CustomerId,
-                        name = x.Name,
-                        address = x.Address,
-                        phoneNumber = x.PhoneNumber,
-                    })
                     .FirstOrDefaultAsync(ct);
+
+                if (customerDb == null)
+                {
+                    return Result<ResCustomerPrivateDto>.Failure("Not found", 404);
+                }
+
+                int completedOrders = customerDb.Orders?.Count(o => o.Status == "Completed") ?? 0;
+                string? maskedPhone = customerDb.PhoneNumber;
+                if (!string.IsNullOrEmpty(maskedPhone) && maskedPhone.Length >= 6)
+                {
+                    maskedPhone = maskedPhone.Substring(0, 3) + new string('*', maskedPhone.Length - 6) + maskedPhone.Substring(maskedPhone.Length - 3);
+                }
+
+                var customer = new ResCustomerPrivateDto
+                {
+                    avatarUrl = customerDb.CustomAvatar ?? customerDb.GoogleAvatar,
+                    email = customerDb.Email,   
+                    id = customerDb.CustomerId,
+                    name = customerDb.Name,
+                    address = customerDb.Address,
+                    phoneNumber = customerDb.PhoneNumber,
+                    maskedPhoneNumber = maskedPhone,
+                    isGoogleLinked = !string.IsNullOrEmpty(customerDb.GoogleId),
+                    totalOrders = customerDb.Orders?.Count() ?? 0
+                };
 
                 if (customer == null)
                 {

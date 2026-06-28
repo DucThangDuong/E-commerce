@@ -25,7 +25,7 @@ namespace Application.Features.Customers.Commands
         {
             try
             {
-                string newAvatarUrl = await _blobService.UploadImageAsync(request.file, "images");
+                string newAvatarUrl = await _blobService.UploadImageAsync(request.file, "avatar");
                 int result = await _unitOfWork.CustomerRepository.UpdateAvatarProfileAsync(request.userId, newAvatarUrl);
                 if (result == 0)
                 {

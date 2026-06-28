@@ -14,6 +14,15 @@ namespace API.EndPoints.Product
         public List<int>? BrandIds { get; set; }
         
         [QueryParam]
+        public string? Keyword { get; set; }
+
+        [QueryParam]
+        public decimal? MinPrice { get; set; }
+
+        [QueryParam]
+        public decimal? MaxPrice { get; set; }
+
+        [QueryParam]
         public int take { get; set; } = 10;
         
         [QueryParam]
@@ -33,7 +42,7 @@ namespace API.EndPoints.Product
 
         public override async Task HandleAsync(ReqGetFilteredProductsDto req, CancellationToken ct)
         {
-            var result = await Mediator.Send(new GetFilteredProductsQuery(req.CategoryIds, req.BrandIds, req.skip, req.take), ct);
+            var result = await Mediator.Send(new GetFilteredProductsQuery(req.CategoryIds, req.BrandIds, req.Keyword, req.MinPrice, req.MaxPrice, req.skip, req.take), ct);
             await this.SendApiResponseAsync(result, ct);
         }
     }
