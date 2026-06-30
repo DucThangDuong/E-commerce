@@ -20,8 +20,12 @@ namespace Application.Features.Products.Commands
     public class AddNewProductHandler : IRequestHandler<AddNewProductCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork;
-        public AddNewProductHandler(IUnitOfWork unitOfWork)
+        private readonly ICategoryRepository _categoryRepository;
+        private readonly IProductRepository _productRepository;
+        public AddNewProductHandler(IUnitOfWork unitOfWork, ICategoryRepository categoryRepository, IProductRepository productRepository)
         {
+            _categoryRepository = categoryRepository;
+            _productRepository = productRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -29,7 +33,7 @@ namespace Application.Features.Products.Commands
         {
             try
             {
-                bool hasCategory = await _unitOfWork.CategoryRepository.CategoryExistsAsync(command.CategoryId, ct);
+                bool hasCategory = await _categoryRepository.CategoryExistsAsync(command.CategoryId, ct);
                 if (!hasCategory)
                 {
                     return Result.Failure("Category not found", 404);
@@ -74,7 +78,7 @@ namespace Application.Features.Products.Commands
                     }).ToList()
                 };
 
-                await _unitOfWork.ProductRepository.AddAsync(newProduct);
+                await _productRepository.AddAsync(newProduct);
                 await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success(201);
             }

@@ -8,11 +8,11 @@ namespace Application.Features.Customers.Commands
 
     public class UpdateCustomerNameHandler : IRequestHandler<UpdateCustomerNameCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
 
-        public UpdateCustomerNameHandler(IUnitOfWork unitOfWork)
+        private readonly ICustomerRepository _customerRepository;
+        public UpdateCustomerNameHandler(ICustomerRepository customerRepository)
         {
-            _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result> Handle(UpdateCustomerNameCommand command, CancellationToken ct)
@@ -21,7 +21,7 @@ namespace Application.Features.Customers.Commands
             {
                 if (string.IsNullOrWhiteSpace(command.Name)) return Result.Failure("Tên không được để trống", 400);
 
-                int rowsAffected = await _unitOfWork.CustomerRepository.UpdateCustomerProfileAsync(
+                int rowsAffected = await _customerRepository.UpdateCustomerProfileAsync(
                     command.CustomerId, 
                     command.Name, 
                     null, 
@@ -42,11 +42,11 @@ namespace Application.Features.Customers.Commands
 
     public class UpdateCustomerPhoneHandler : IRequestHandler<UpdateCustomerPhoneCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomerRepository _customerRepository;
 
-        public UpdateCustomerPhoneHandler(IUnitOfWork unitOfWork)
+        public UpdateCustomerPhoneHandler(ICustomerRepository customerRepository)
         {
-            _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result> Handle(UpdateCustomerPhoneCommand command, CancellationToken ct)
@@ -57,7 +57,7 @@ namespace Application.Features.Customers.Commands
                 if (string.IsNullOrWhiteSpace(command.PhoneNumber) || command.PhoneNumber.Length < 10) 
                     return Result.Failure("Số điện thoại không hợp lệ", 400);
 
-                int rowsAffected = await _unitOfWork.CustomerRepository.UpdateCustomerProfileAsync(
+                int rowsAffected = await _customerRepository.UpdateCustomerProfileAsync(
                     command.CustomerId, 
                     null, 
                     command.PhoneNumber, 
@@ -78,11 +78,11 @@ namespace Application.Features.Customers.Commands
 
     public class UpdateCustomerAddressHandler : IRequestHandler<UpdateCustomerAddressCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly ICustomerRepository _customerRepository;
 
-        public UpdateCustomerAddressHandler(IUnitOfWork unitOfWork)
+        public UpdateCustomerAddressHandler(ICustomerRepository customerRepository)
         {
-            _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
         }
 
         public async Task<Result> Handle(UpdateCustomerAddressCommand command, CancellationToken ct)
@@ -92,7 +92,7 @@ namespace Application.Features.Customers.Commands
                 if (string.IsNullOrWhiteSpace(command.Address)) 
                     return Result.Failure("Địa chỉ không được để trống", 400);
 
-                int rowsAffected = await _unitOfWork.CustomerRepository.UpdateCustomerProfileAsync(
+                int rowsAffected = await _customerRepository.UpdateCustomerProfileAsync(
                     command.CustomerId, 
                     null, 
                     null, 
@@ -113,12 +113,12 @@ namespace Application.Features.Customers.Commands
 
     public class UpdateCustomerPasswordHandler : IRequestHandler<UpdateCustomerPasswordCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IAppReadDbContext _db;
+        private readonly ICustomerRepository _customerRepository;
 
-        public UpdateCustomerPasswordHandler(IUnitOfWork unitOfWork, IAppReadDbContext db)
+        public UpdateCustomerPasswordHandler(ICustomerRepository customerRepository, IAppReadDbContext db)
         {
-            _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
             _db = db;
         }
 
@@ -146,7 +146,7 @@ namespace Application.Features.Customers.Commands
                 }
 
                 string newHash = BCrypt.Net.BCrypt.HashPassword(command.NewPassword);
-                await _unitOfWork.CustomerRepository.UpdatePasswordAsync(command.CustomerId, newHash, ct);
+                await _customerRepository.UpdatePasswordAsync(command.CustomerId, newHash, ct);
                 
                 return Result.Success();
             }

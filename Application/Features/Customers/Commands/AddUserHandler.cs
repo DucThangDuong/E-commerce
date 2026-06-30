@@ -11,12 +11,12 @@ namespace Application.Features.Customers.Commands
     public class AddUserHandler : IRequestHandler<AddUserCommand, Result>
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IPublishEndpoint _publishEndpoint;
 
-        public AddUserHandler(IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
+        private readonly ICustomerRepository _customerRepository;
+        public AddUserHandler(IUnitOfWork unitOfWork, ICustomerRepository customerRepository)
         {
+            _customerRepository = customerRepository;
             _unitOfWork = unitOfWork;
-            _publishEndpoint = publishEndpoint;
         }
 
         public async Task<Result> Handle(AddUserCommand command, CancellationToken ct)
@@ -27,15 +27,13 @@ namespace Application.Features.Customers.Commands
             }
             try
             {
-                bool isEmailExists = await _unitOfWork.CustomerRepository.EmailExistsAsync(command.Email);
+                bool isEmailExists = await _customerRepository.EmailExistsAsync(command.Email);
                 if (isEmailExists)
                 {
                     return Result.Failure("Email đã tồn tại", 400);
                 }
-                await _unitOfWork.CustomerRepository.AddAsync(command.Email, command.Password, command.Name);
-                var orderEvent = new SendMail(command.Email, "Chào mừng bạn đến với Food Delivery App!",
-                    $"Xin chào {command.Name}!\nCảm ơn bạn đã đăng ký tài khoản tại Food Delivery App. Chúng tôi rất vui được phục vụ bạn!");
-                await _publishEndpoint.Publish(orderEvent, ct);
+                await _customerRepository.AddAsync(command.Email, command.Password, command.Name);
+
                 await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success(201);
             }

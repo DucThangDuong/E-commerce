@@ -23,7 +23,11 @@ namespace Application.Features.Order.Commands
         private readonly MassTransit.IPublishEndpoint _publishEndpoint;
         private readonly IAppReadDbContext _db;
 
-        public UpdateHasPaymentHandler(IUnitOfWork unitOfWork, INotificationService notificationService, MassTransit.IPublishEndpoint publishEndpoint, IAppReadDbContext db) { 
+        private readonly ICartRepository _cartRepository;
+        private readonly IOrderRepository _orderRepository;
+        public UpdateHasPaymentHandler(IUnitOfWork unitOfWork, INotificationService notificationService, MassTransit.IPublishEndpoint publishEndpoint, IAppReadDbContext db, ICartRepository cartRepository, IOrderRepository orderRepository) {
+            _cartRepository = cartRepository;
+            _orderRepository = orderRepository; 
             _unitOfWork = unitOfWork;
             _notificationService = notificationService;
             _publishEndpoint = publishEndpoint;
@@ -34,7 +38,7 @@ namespace Application.Features.Order.Commands
         {
             try
             {
-                var order = await _unitOfWork.OrderRepository.GetByIdAsync(request.OrderId);
+                var order = await _orderRepository.GetByIdAsync(request.OrderId);
                 if (order == null)
                 {
                     return Result<ResIpnDTO>.Failure("Order not found", 404, new ResIpnDTO { RspCode = "01", Message = "Order not found" });
@@ -95,7 +99,7 @@ namespace Application.Features.Order.Commands
                                         
                     if (colorIds.Any())
                     {
-                        await _unitOfWork.CartRepository.DeleteCartItemsAsync(order.CustomerId, colorIds);
+                        await _cartRepository.DeleteCartItemsAsync(order.CustomerId, colorIds);
                     }
 
                     await _notificationService.SendMessageToOrderId(

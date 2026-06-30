@@ -18,8 +18,10 @@ namespace Application.Features.Customers.Commands
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IDatabase _redisConnection;
 
-        public AddLoginUserHandler(IUnitOfWork unitOfWork, IJWTTokenServices jwtTokenService, IPublishEndpoint publishEndpoint, IConnectionMultiplexer connectionMultiplexer)
+        private readonly ICustomerRepository _customerRepository;
+        public AddLoginUserHandler(IUnitOfWork unitOfWork, IJWTTokenServices jwtTokenService, IPublishEndpoint publishEndpoint, IConnectionMultiplexer connectionMultiplexer, ICustomerRepository customerRepository)
         {
+            _customerRepository = customerRepository;
             _unitOfWork = unitOfWork;
             _jwtTokenService = jwtTokenService;
             _publishEndpoint = publishEndpoint;
@@ -32,7 +34,7 @@ namespace Application.Features.Customers.Commands
             {
                 return Result<LoginResponse>.Failure("Email và mật khẩu không được để trống.", 400);
             }
-            var userEntity = await _unitOfWork.CustomerRepository.GetByEmailAsync(command.Email);
+            var userEntity = await _customerRepository.GetByEmailAsync(command.Email);
             if (userEntity == null || !BCrypt.Net.BCrypt.Verify(command.Password, userEntity.PasswordHash))
             {
                 return Result<LoginResponse>.Failure("Tài khoản hoặc mật khẩu không chính xác.", 401);

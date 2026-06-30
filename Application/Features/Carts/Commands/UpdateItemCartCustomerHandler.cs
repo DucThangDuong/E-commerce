@@ -15,8 +15,12 @@ namespace Application.Features.Carts.Commands
         private readonly IAppReadDbContext _db;
         private readonly ILogger<UpdateItemCartCustomerHandler> _logger;
 
-        public UpdateItemCartCustomerHandler(IUnitOfWork unitOfWork, IAppReadDbContext db, ILogger<UpdateItemCartCustomerHandler> logger)
+        private readonly IInventoryRepository _inventoryRepository;
+        private readonly ICartRepository _cartRepository;
+        public UpdateItemCartCustomerHandler(IUnitOfWork unitOfWork, IAppReadDbContext db, ILogger<UpdateItemCartCustomerHandler> logger, IInventoryRepository inventoryRepository, ICartRepository cartRepository)
         {
+            _inventoryRepository = inventoryRepository;
+            _cartRepository = cartRepository;
             _unitOfWork = unitOfWork;
             _db = db;
             _logger = logger;
@@ -26,7 +30,7 @@ namespace Application.Features.Carts.Commands
         {
             try
             {
-                var existingCart = await _unitOfWork.CartRepository.GetCartByIdAsync(command.CartId, command.CustomerId);
+                var existingCart = await _cartRepository.GetCartByIdAsync(command.CartId, command.CustomerId);
                 if (existingCart == null)
                 {
                     return Result<ResCartDto>.Failure("Cart item not found.", 404);
@@ -34,13 +38,13 @@ namespace Application.Features.Carts.Commands
 
                 if (command.Quantity <= 0)
                 {
-                    await _unitOfWork.CartRepository.DeleteCartByIdAsync(command.CartId, command.CustomerId);
+                    await _cartRepository.DeleteCartByIdAsync(command.CartId, command.CustomerId);
                     await _unitOfWork.SaveChangesAsync(ct);
                     // Return a result with quantity 0 to indicate deletion
                     return Result<ResCartDto>.Success(new ResCartDto { CartId = command.CartId, Quantity = 0 }, 200);
                 }
 
-                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { existingCart.ColorId }, ct);
+                var dbStockMap = await _inventoryRepository.GetStockByColorIdsAsync(new List<int> { existingCart.ColorId }, ct);
                 int? stockQuantity = dbStockMap.ContainsKey(existingCart.ColorId) ? dbStockMap[existingCart.ColorId] : null;
 
                 if (stockQuantity == null)

@@ -1,22 +1,11 @@
 using API.DTOs;
+using API.Extensions;
+using API.Logging;
 using API.Middleware;
-using Application.Consumers;
-using Application.Interfaces;
-using Application.IServices;
 using FastEndpoints;
 using FastEndpoints.Swagger;
-using Infrastructure;
-using Infrastructure.Repositories;
 using Infrastructure.Services;
-using MassTransit;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using StackExchange.Redis;
-using System.Text;
-using System.Threading.RateLimiting;
 using Serilog;
-using API.Logging;
 
 namespace API
 {
@@ -32,231 +21,15 @@ namespace API
                 .Enrich.FromLogContext()
                 .Destructure.With<SensitiveDataDestructuringPolicy>());
 
-            // ──────────── CORS ────────────
-            builder.Services.AddCors(option =>
-            {
-                option.AddPolicy("CORS", options =>
-                {
-                    options
-                    .WithOrigins("https://e-commerce-frontend-umber-eight.vercel.app",
-                           "http://localhost:5173")
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .AllowCredentials();
-                });
-            });
-
-            builder.Services.AddControllers();
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddFastEndpoints();
-            builder.Services.SwaggerDocument(o =>
-            {
-                o.DocumentSettings = s =>
-                {
-                    s.Title = "E-commerce API";
-                    s.Version = "v1";
-                };
-                o.EnableJWTBearerAuth = true;
-            });
-            builder.Services.AddDbContext<EcommerceContext>(options =>
-            {
-                var connectionString = builder.Environment.IsProduction() 
-                    ? builder.Configuration.GetConnectionString("AZURE_SQL_CONNECTIONSTRING") 
-                    : builder.Configuration.GetConnectionString("Ecommerce");
-
-                options.UseSqlServer(connectionString, sqlOptions =>
-                {
-                    sqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 5,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null);
-                });
-            });
-
-            // ──────────── MediatR (auto-scan all handlers) ────────────
-            builder.Services.AddMediatR(cfg =>
-            {
-                cfg.RegisterServicesFromAssemblyContaining<Application.Features.Customers.Commands.AddUserHandler>();
-                cfg.AddOpenBehavior(typeof(Application.Behaviors.LoggingBehavior<,>));
-            });
-
-            // ──────────── MassTransit + RabbitMQ ────────────
-            builder.Services.AddMassTransit(x =>
-            {
-                x.AddDelayedMessageScheduler();
-                x.AddConsumer<SendMail>();
-                x.AddConsumer<CheckOrderExpirationConsumer>();
-
-                x.AddEntityFrameworkOutbox<EcommerceContext>(o =>
-                {
-                    o.UseSqlServer();
-                    o.UseBusOutbox();
-                });
-                x.UsingRabbitMq((context, cfg) =>
-                {
-                    cfg.Host(builder.Configuration["RabbitMQ:HostName"] ?? "", "/", h =>
-                    {
-                        h.Username(builder.Configuration["RabbitMQ:UserName"] ?? "");
-                        h.Password(builder.Configuration["RabbitMQ:Password"] ?? "");
-                    });
-
-                    cfg.UseDelayedMessageScheduler();
-                    cfg.ConfigureEndpoints(context);
-                });
-            });
-
-
-            //──────────── Redis  ────────────
-            builder.Services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = builder.Configuration["RedisCache"];
-            });
-            var redisConnectionString = builder.Configuration["RedisCache"] ?? "localhost:6379";
-            builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-            {
-                var configuration = ConfigurationOptions.Parse(redisConnectionString, true);
-                configuration.AbortOnConnectFail = false;
-                configuration.ConnectRetry = 5;
-                return ConnectionMultiplexer.Connect(configuration);
-            });
-            builder.Services.AddSingleton<ICacheService, CacheService>();
-
-            // ──────────── Rate Limiting ────────────
-            builder.Services.AddRateLimiter(options =>
-            {
-                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-                var getPartitionKey = (HttpContext httpContext) =>
-                {
-                    var isAuth = httpContext.User.Identity?.IsAuthenticated == true;
-                    string? userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-                    if (isAuth && !string.IsNullOrEmpty(userId))
-                    {
-                        return $"user_{userId}";
-                    }
-                    
-                    return $"ip_{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
-                };
-
-                // Global Limiter
-                options.AddPolicy("auth_strict", httpContext =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: $"auth_{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 5,
-                            QueueLimit = 0,
-                            Window = TimeSpan.FromSeconds(30)
-                        }));
-
-                options.AddPolicy("order_strict", httpContext =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: $"order_{getPartitionKey(httpContext)}",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 4,
-                            QueueLimit = 0,
-                            Window = TimeSpan.FromSeconds(60)
-                        }));
-
-                options.AddPolicy("create_payment", httpContext =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: $"payment_{getPartitionKey(httpContext)}",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 5,
-                            QueueLimit = 0,
-                            Window = TimeSpan.FromMinutes(1)
-                        }));
-
-                options.AddPolicy("search_strict", httpContext =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: $"search_{getPartitionKey(httpContext)}",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 15,
-                            QueueLimit = 0,
-                            Window = TimeSpan.FromSeconds(10)
-                        }));
-
-                options.AddPolicy("cart_strict", httpContext =>
-                    RateLimitPartition.GetFixedWindowLimiter(
-                        partitionKey: $"cart_{getPartitionKey(httpContext)}",
-                        factory: _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = 20,
-                            QueueLimit = 0,
-                            Window = TimeSpan.FromSeconds(10)
-                        }));
-            });
-
-            // ──────────── Authentication (JWT) ────────────
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-                .AddJwtBearer(options =>
-                {
-                    var key = Encoding.UTF8.GetBytes(builder.Configuration["SecretKey"] ?? string.Empty);
-                    options.SaveToken = true;
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = false,
-                        ValidateAudience = false,
-                        ValidateLifetime = true,
-                        RequireExpirationTime = true,
-                        ValidateIssuerSigningKey = true,
-                        RequireSignedTokens = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ClockSkew = TimeSpan.Zero
-                    };
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnMessageReceived = context =>
-                        {
-                            var accessToken = context.Request.Query["access_token"];
-                            var path = context.HttpContext.Request.Path;
-
-                            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notifications"))
-                            {
-                                context.Token = accessToken; 
-                            }
-                            return Task.CompletedTask;
-                        }
-                    };
-                });
-
-            builder.Services.AddAuthorization();
-
-            // ──────────── Services (DI) ────────────
-            builder.Services.AddScoped<IJWTTokenServices, JwtTokenService>();
-
-            // Email
-            builder.Services.Configure<MailSettings>(builder.Configuration.GetSection("MailSettings"));
-            builder.Services.AddSingleton<IEmailSender, MailSender>();
-            builder.Services.AddScoped<IGoogleAuthService, GoogleAuthService>();
-            builder.Services.AddScoped<INotificationService, NotificationService>();
-            builder.Services.AddScoped<IVnPayService, VnPayService>();
-
-            // Repositories (individual registration for DI into UnitOfWork)
-            builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
-            builder.Services.AddScoped<ICartRepository, CartRepository>();
-            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
-            builder.Services.AddScoped<IBrandRepository, BrandRepository>();
-            builder.Services.AddScoped<IProductRepository, ProductRepository>();
-            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<IInventoryRepository,InventoryRepository>();
-            builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
-            builder.Services.AddScoped<IOrderShippingDetailRepository, OrderShippingDetailRepository>();
-            builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-            builder.Services.AddScoped<IAppReadDbContext>(sp => sp.GetRequiredService<EcommerceContext>());
-
-            builder.Services.AddScoped<IBlobService, AzureBlobService>();
-            //hub
-            builder.Services.AddSignalR();
-            builder.Services.AddHttpContextAccessor();
+            // ──────────── Dependency Injection Bootstrapping ────────────
+            builder.Services.AddApiConfiguration(builder.Configuration)
+                            .AddSwaggerConfiguration()
+                            .AddDatabaseConfiguration(builder.Configuration, builder.Environment)
+                            .AddApplicationServices(builder.Configuration)
+                            .AddMessageBrokerConfiguration(builder.Configuration)
+                            .AddCacheConfiguration(builder.Configuration)
+                            .AddRateLimitingConfiguration()
+                            .AddJwtAuthentication(builder.Configuration);
 
             var app = builder.Build();
 
@@ -283,16 +56,20 @@ namespace API
                 });
             });
 
+            // ──────────── Middlewares ────────────
             app.UseMiddleware<SecurityHeadersMiddleware>();
             app.UseMiddleware<XssSanitizationMiddleware>();
             app.UseMiddleware<LogContextMiddleware>();
+            
             app.UseSerilogRequestLogging();
             app.UseRouting();
             app.UseCors("CORS");
             app.UseHttpsRedirection();
+            
             app.UseAuthentication();
             app.UseMiddleware<AccessTokenBlacklistMiddleware>();
             app.UseAuthorization();
+            
             app.UseRateLimiter();
             
             app.UseFastEndpoints(c => 
@@ -312,6 +89,7 @@ namespace API
                     };
                 };
             });
+            
             app.UseSwaggerGen();
             app.MapControllers();
             app.MapHub<NotificationHub>("/notifications");

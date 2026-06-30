@@ -13,8 +13,12 @@ namespace Application.Features.Carts.Commands
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<AddItemCartCustomerHandler> _logger;
 
-        public AddItemCartCustomerHandler(IUnitOfWork unitOfWork, ILogger<AddItemCartCustomerHandler> logger)
+        private readonly ICartRepository _cartRepository;
+        private readonly IInventoryRepository _inventoryRepository;
+        public AddItemCartCustomerHandler(IUnitOfWork unitOfWork, ILogger<AddItemCartCustomerHandler> logger, ICartRepository cartRepository, IInventoryRepository inventoryRepository)
         {
+            _cartRepository = cartRepository;
+            _inventoryRepository = inventoryRepository;
             _unitOfWork = unitOfWork;
             _logger = logger;
         }
@@ -23,7 +27,7 @@ namespace Application.Features.Carts.Commands
         {
             try
             {
-                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { command.ColorId }, ct);
+                var dbStockMap = await _inventoryRepository.GetStockByColorIdsAsync(new List<int> { command.ColorId }, ct);
                 int? stockQuantity = dbStockMap.ContainsKey(command.ColorId) ? dbStockMap[command.ColorId] : null;
 
                 if (stockQuantity == null)
@@ -31,7 +35,7 @@ namespace Application.Features.Carts.Commands
                     return Result.Failure("Variant not found.", 404);
                 }
 
-                var existingCart = await _unitOfWork.CartRepository.GetCartAsync(command.CustomerId, command.ColorId);
+                var existingCart = await _cartRepository.GetCartAsync(command.CustomerId, command.ColorId);
                 int currentQuantityInCart = existingCart?.Quantity ?? 0;
 
                 if (stockQuantity.Value == 0 || (currentQuantityInCart + command.Quantity) > stockQuantity.Value)
@@ -51,7 +55,7 @@ namespace Application.Features.Carts.Commands
                         ColorId = command.ColorId,
                         Quantity = command.Quantity
                     };
-                    await _unitOfWork.CartRepository.AddNewCartAsync(newCart);
+                    await _cartRepository.AddNewCartAsync(newCart);
                 }
 
                 await _unitOfWork.SaveChangesAsync(ct);

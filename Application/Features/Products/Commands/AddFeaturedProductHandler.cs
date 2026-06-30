@@ -15,8 +15,10 @@ namespace Application.Features.Products.Commands
     {
         private readonly IUnitOfWork _unitOfWork;
 
-        public AddFeaturedProductHandler(IUnitOfWork unitOfWork)
+        private readonly IProductRepository _productRepository;
+        public AddFeaturedProductHandler(IUnitOfWork unitOfWork, IProductRepository productRepository)
         {
+            _productRepository = productRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -24,7 +26,7 @@ namespace Application.Features.Products.Commands
         {
             try
             {
-                var product = await _unitOfWork.ProductRepository.ProductExistsAsync(command.ProductId, ct);
+                var product = await _productRepository.ProductExistsAsync(command.ProductId, ct);
                 if (product == false)
                 {
                     return Result.Failure("Product not found.", 404);
@@ -39,7 +41,7 @@ namespace Application.Features.Products.Commands
                     CreatedAt = DateTime.UtcNow
                 };
 
-                await _unitOfWork.ProductRepository.AddFeaturedProductAsync(featuredProduct, ct);
+                await _productRepository.AddFeaturedProductAsync(featuredProduct, ct);
                 await _unitOfWork.SaveChangesAsync(ct);
                 return Result.Success(201);
             }

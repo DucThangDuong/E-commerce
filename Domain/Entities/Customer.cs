@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using Domain.Common;
+using Domain.Events;
 
 namespace Domain.Entities;
 
-public partial class Customer
+public partial class Customer : BaseEntity
 {
     public int CustomerId { get; set; }
 
@@ -38,4 +40,28 @@ public partial class Customer
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
     public virtual ICollection<WarrantyBook> WarrantyBooks { get; set; } = new List<WarrantyBook>();
+
+    public static Customer Create(string name, string email, string passwordHash)
+    {
+        var customer = new Customer
+        {
+            Name = name,
+            Email = email,
+            PasswordHash = passwordHash,
+            CreatedAt = DateTime.UtcNow,
+            Role = "User",
+            IsActive = true,
+            LoginProvider = "Custom"
+        };
+        
+        customer.AddDomainEvent(new UserCreatedEvent(name, email));
+        
+        return customer;
+    }
+
+    public void UpdatePassword(string passwordHash)
+    {
+        PasswordHash = passwordHash;
+        CustomAvatar = "default-avatar.jpg";
+    }
 }

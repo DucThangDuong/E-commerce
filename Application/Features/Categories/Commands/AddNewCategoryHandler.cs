@@ -10,14 +10,16 @@ namespace Application.Features.Categories.Commands
     {
         private readonly IUnitOfWork _unitOfWork;
 
-        public AddNewCategoryHandler(IUnitOfWork unitOfWork)
+        private readonly ICategoryRepository _categoryRepository;
+        public AddNewCategoryHandler(IUnitOfWork unitOfWork, ICategoryRepository categoryRepository)
         {
+            _categoryRepository = categoryRepository;
             _unitOfWork = unitOfWork;
         }
 
         public async Task<Result> Handle(AddNewCategoryCommand command, CancellationToken ct)
         {
-            var value = await _unitOfWork.CategoryRepository.AddNewCategoryAsync(command.Name, command.Description, command.Picture);
+            var value = await _categoryRepository.AddNewCategoryAsync(command.Name, command.Description, command.Picture);
             if (value != null)
             {
                 await _unitOfWork.SaveChangesAsync(ct);

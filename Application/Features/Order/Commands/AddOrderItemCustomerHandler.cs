@@ -11,12 +11,14 @@ namespace Application.Features.Order.Commands
 
     public class ValidateCartHandler : IRequestHandler<ValidateCartCommand, Result<ValidateCartResponse>>
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IDatabase _redisConnection;
 
-        public ValidateCartHandler(IUnitOfWork unitOfWork, IConnectionMultiplexer multiplexer)
+        private readonly IInventoryRepository _inventoryRepository;
+        private readonly IProductRepository _productRepository;
+        public ValidateCartHandler(IConnectionMultiplexer multiplexer, IInventoryRepository inventoryRepository, IProductRepository productRepository)
         {
-            _unitOfWork = unitOfWork;
+            _inventoryRepository = inventoryRepository;
+            _productRepository = productRepository;
             _redisConnection = multiplexer.GetDatabase();
         }
 
@@ -57,7 +59,7 @@ namespace Application.Features.Order.Commands
 
             if (missingColorIds.Any())
             {
-                var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(missingColorIds, ct);
+                var dbStockMap = await _inventoryRepository.GetStockByColorIdsAsync(missingColorIds, ct);
                 foreach (var id in missingColorIds)
                 {
                     int dbStock = dbStockMap.ContainsKey(id) ? dbStockMap[id] : 0;
@@ -86,7 +88,7 @@ namespace Application.Features.Order.Commands
                 return Result<ValidateCartResponse>.Failure("Các sản phẩm không đủ tồn kho.", 400);
             }
 
-            Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
+            Dictionary<int, decimal> colorPrices = await _productRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
             var validatedItems = new List<ValidatedCartItem>();
             decimal subTotal = 0;

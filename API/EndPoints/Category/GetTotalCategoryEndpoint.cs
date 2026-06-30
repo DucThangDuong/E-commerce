@@ -1,8 +1,10 @@
 using API.Extensions;
 using Application.DTOs.Response;
-using Application.Features.Categories.Queries;
+using Application.Common;
+using Application.Interfaces;
+using Application.IServices;
 using FastEndpoints;
-using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.EndPoints.Category
 {
@@ -13,7 +15,14 @@ namespace API.EndPoints.Category
 
     public class GetTotalCategoryEndpoint : Endpoint<ReqGetTotalCategoryDto, List<ResCategoryDto>>
     {
-        public IMediator Mediator { get; set; } = null!;
+        private readonly IAppReadDbContext _db;
+        private readonly ICacheService _cache;
+        
+        public GetTotalCategoryEndpoint(IAppReadDbContext db, ICacheService cache)
+        {
+            _db = db;
+            _cache = cache;
+        }
 
         public override void Configure()
         {
@@ -23,8 +32,32 @@ namespace API.EndPoints.Category
 
         public override async Task HandleAsync(ReqGetTotalCategoryDto req, CancellationToken ct)
         {
-            var result = await Mediator.Send(new GetAllCategoryQuery(req.take), ct);
-            await this.SendApiResponseAsync(result, ct);
+            try
+            {
+                string cacheKey = $"category";
+
+                var cachedResult = await _cache.GetOrSetAsync(cacheKey, async () => 
+                {
+                    return await _db.Categories
+                        .AsNoTracking()
+                        .OrderBy(e => e.CategoryId)
+                        .Take(req.take)
+                        .Select(c => new ResCategoryDto
+                        {
+                            CategoryId = c.CategoryId,
+                            Description = c.Description,
+                            Name = c.Name,
+                            Picture = c.Picture
+                        })
+                        .ToListAsync(ct);
+                }, TimeSpan.FromHours(24));
+
+                await this.SendApiResponseAsync(Result<List<ResCategoryDto>>.Success(cachedResult ?? new List<ResCategoryDto>()), ct);
+            }
+            catch (Exception ex)
+            {
+                await this.SendApiResponseAsync(Result<List<ResCategoryDto>>.Failure(ex.Message), ct);
+            }
         }
     }
 }

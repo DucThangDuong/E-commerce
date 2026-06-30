@@ -1,7 +1,10 @@
 using API.Extensions;
-using Application.Features.Brands.Queries;
+using Application.DTOs.Response;
+using Application.Common;
+using Application.Interfaces;
+using Application.IServices;
 using FastEndpoints;
-using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.EndPoints.Brand
 {
@@ -13,7 +16,14 @@ namespace API.EndPoints.Brand
 
     public class GetAllBrandsEndpoint : Endpoint<ReqGetBrandDto>
     {
-        public IMediator Mediator { get; set; } = null!;
+        private readonly IAppReadDbContext _db;
+        private readonly ICacheService _cache;
+        
+        public GetAllBrandsEndpoint(IAppReadDbContext db, ICacheService cache)
+        {
+            _db = db;
+            _cache = cache;
+        }
 
         public override void Configure()
         {
@@ -23,8 +33,32 @@ namespace API.EndPoints.Brand
 
         public override async Task HandleAsync(ReqGetBrandDto req, CancellationToken ct)
         {
-            var result = await Mediator.Send(new GetAllBrandsQuery(req.take), ct);
-            await this.SendApiResponseAsync(result, ct);
+            try
+            {
+                string cacheKey = $"brand";
+
+                var cachedResult = await _cache.GetOrSetAsync(cacheKey, async () => 
+                {
+                    return await _db.Brands
+                        .AsNoTracking()
+                        .OrderBy(e => e.BrandId)
+                        .Take(req.take)
+                        .Select(b => new ResBrandDto
+                        {
+                            BrandId = b.BrandId,
+                            Description = b.Description,
+                            Name = b.Name,
+                            LogoUrl = b.LogoUrl
+                        })
+                        .ToListAsync(ct);
+                }, TimeSpan.FromHours(24));
+
+                await this.SendApiResponseAsync(Result<List<ResBrandDto>>.Success(cachedResult ?? new List<ResBrandDto>(), 200), ct);
+            }
+            catch (Exception ex)
+            {
+                await this.SendApiResponseAsync(Result<List<ResBrandDto>>.Failure(ex.Message, 500), ct);
+            }
         }
     }
 }

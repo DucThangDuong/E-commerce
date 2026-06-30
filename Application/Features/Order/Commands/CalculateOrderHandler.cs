@@ -14,12 +14,12 @@ namespace Application.Features.Order.Commands
 
     public class CalculateOrderHandler : IRequestHandler<CalculateOrderCommand, Result<CalculateOrderResponse>>
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IAppReadDbContext _db;
 
-        public CalculateOrderHandler(IUnitOfWork unitOfWork, IAppReadDbContext db)
+        private readonly IProductRepository _productRepository;
+        public CalculateOrderHandler(IAppReadDbContext db, IProductRepository productRepository)
         {
-            _unitOfWork = unitOfWork;
+            _productRepository = productRepository;
             _db = db;
         }
 
@@ -41,7 +41,7 @@ namespace Application.Features.Order.Commands
 
             List<int> colorIds = itemUserWantBuy.Keys.ToList();
 
-            Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
+            Dictionary<int, decimal> colorPrices = await _productRepository.GetPricesByColorIdsAsync(colorIds, ct);
             decimal subTotal = 0;
 
             foreach (var item in itemUserWantBuy)

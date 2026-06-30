@@ -1,10 +1,13 @@
 using Application.Interfaces;
+using Domain.Common;
+using MediatR;
 
 namespace Infrastructure.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
         private readonly EcommerceContext _context;
+        private readonly IPublisher _publisher;
 
         public ICustomerRepository CustomerRepository { get; }
         public ICartRepository CartRepository { get; }
@@ -18,6 +21,7 @@ namespace Infrastructure.Repositories
 
         public UnitOfWork(
             EcommerceContext context,
+            IPublisher publisher,
             ICustomerRepository customerRepository,
             ICartRepository cartRepository,
             ICategoryRepository categoryRepository,
@@ -29,6 +33,7 @@ namespace Infrastructure.Repositories
             IOrderShippingDetailRepository orderShippingDetailRepository)
         {
             _context = context;
+            _publisher = publisher;
             CustomerRepository = customerRepository;
             CartRepository = cartRepository;
             CategoryRepository = categoryRepository;
@@ -43,6 +48,22 @@ namespace Infrastructure.Repositories
 
         public async Task SaveChangesAsync(CancellationToken ct = default)
         {
+            var domainEntities = _context.ChangeTracker
+                .Entries<BaseEntity>()
+                .Where(x => x.Entity.DomainEvents != null && x.Entity.DomainEvents.Any())
+                .ToList();
+
+            var domainEvents = domainEntities
+                .SelectMany(x => x.Entity.DomainEvents)
+                .ToList();
+
+            domainEntities.ForEach(entity => entity.Entity.ClearDomainEvents());
+
+            foreach (var domainEvent in domainEvents)
+            {
+                await _publisher.Publish(domainEvent, ct);
+            }
+
             await _context.SaveChangesAsync(ct);
         }
     }

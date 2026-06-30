@@ -10,14 +10,16 @@ namespace Application.Features.Brands.Commands
     {
         private readonly IUnitOfWork _unitOfWork;
 
-        public AddNewBrandHandler(IUnitOfWork unitOfWork)
+        private readonly IBrandRepository _brandRepository;
+        public AddNewBrandHandler(IUnitOfWork unitOfWork, IBrandRepository brandRepository)
         {
+            _brandRepository = brandRepository;
             _unitOfWork = unitOfWork;
         }
 
         public async Task<Result> Handle(AddNewBrandCommand command, CancellationToken ct)
         {
-            var value = await _unitOfWork.BrandRepository.AddNewBrandAsync(command.Name, command.Description, command.LogoUrl);
+            var value = await _brandRepository.AddNewBrandAsync(command.Name, command.Description, command.LogoUrl);
             if (value != null)
             {
                 await _unitOfWork.SaveChangesAsync(ct);

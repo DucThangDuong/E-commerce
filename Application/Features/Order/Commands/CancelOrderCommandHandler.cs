@@ -14,8 +14,10 @@ namespace Application.Features.Order.Commands
         private readonly IUnitOfWork _unitOfWork;
         private readonly IDatabase _redisConnection;
 
-        public CancelOrderCommandHandler(IAppReadDbContext db, IUnitOfWork unitOfWork, IConnectionMultiplexer connectionMultiplexer)
+        private readonly IInventoryRepository _inventoryRepository;
+        public CancelOrderCommandHandler(IAppReadDbContext db, IUnitOfWork unitOfWork, IConnectionMultiplexer connectionMultiplexer, IInventoryRepository inventoryRepository)
         {
+            _inventoryRepository = inventoryRepository;
             _db = db;
             _unitOfWork = unitOfWork;
             _redisConnection = connectionMultiplexer.GetDatabase();
@@ -74,7 +76,7 @@ namespace Application.Features.Order.Commands
                 };
 
                 var vehicleIdsToRelease = order.OrderItems.Select(oi => oi.VehicleId).ToList();
-                await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(vehicleIdsToRelease, cancellationToken);
+                await _inventoryRepository.ReleaseVehiclesAsync(vehicleIdsToRelease, cancellationToken);
 
                 var groupedByColor = order.OrderItems.GroupBy(oi => oi.Vehicle.ColorId);
                 foreach (var g in groupedByColor)

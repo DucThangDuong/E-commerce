@@ -8,18 +8,18 @@ namespace Application.Features.Carts.Commands
 
     public class DeleteItemCartCustomerHandler : IRequestHandler<DeleteItemCartCustomerCommand, Result>
     {
-        private readonly IUnitOfWork _unitOfWork;
 
-        public DeleteItemCartCustomerHandler(IUnitOfWork unitOfWork)
+        private readonly ICartRepository _cartRepository;
+        public DeleteItemCartCustomerHandler(ICartRepository cartRepository)
         {
-            _unitOfWork = unitOfWork;
+            _cartRepository = cartRepository;
         }
 
         public async Task<Result> Handle(DeleteItemCartCustomerCommand command, CancellationToken ct)
         {
             try
             {
-                bool result = await _unitOfWork.CartRepository.DeleteCartAsync(command.CustomerId, command.ColorId);
+                bool result = await _cartRepository.DeleteCartAsync(command.CustomerId, command.ColorId);
                 if (result)
                 {
                     return Result.Success(204);

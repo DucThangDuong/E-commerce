@@ -1,7 +1,8 @@
 using API.Extensions;
-using Application.Features.Products.Queries;
+using Application.DTOs.Response;
+using Application.Interfaces;
 using FastEndpoints;
-using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.EndPoints.Product
 {
@@ -15,7 +16,12 @@ namespace API.EndPoints.Product
 
     public class GetAllProductEndpoint : Endpoint<ReqGetProductDto>
     {
-        public IMediator Mediator { get; set; } = null!;
+        private readonly IAppReadDbContext _db;
+
+        public GetAllProductEndpoint(IAppReadDbContext db)
+        {
+            _db = db;
+        }
 
         public override void Configure()
         {
@@ -26,8 +32,51 @@ namespace API.EndPoints.Product
 
         public override async Task HandleAsync(ReqGetProductDto req, CancellationToken ct)
         {
-            var result = await Mediator.Send(new GetAllProductQuery(req.skip, req.take), ct);
-            await this.SendApiResponseAsync(result, ct);
+            try
+            {
+                int totalItems = await _db.Products.CountAsync(ct);
+
+                var products = await _db.Products
+                    .AsNoTracking()
+                    .OrderBy(e => e.ProductId)
+                    .Skip(req.skip)
+                    .Take(req.take > 0 ? req.take : 10)
+                    .Select(e => new ResProductDto
+                    {
+                        BasePrice = e.BasePrice,
+                        CategoryId = e.CategoryId,
+                        BrandId = e.BrandId,
+                        Description = e.Description,
+                        Name = e.Name,
+                        ProductId = e.ProductId,
+                        ImageUrls = e.ProductImages.Where(pi => pi.ColorId == null).Select(pi => pi.ImageUrl).ToList(),
+                        Colors = e.ProductColors.Select(pc => new ResProductColorDto
+                        {
+                            ColorId = pc.ColorId,
+                            ColorName = pc.ColorName,
+                            PriceAdjustment = pc.PriceAdjustment,
+                            StockQuantity = pc.Vehicles.Count(v => v.Status == "Available"),
+                            ImageUrls = pc.ProductImages.Select(pi => pi.ImageUrl).ToList()
+                        }).ToList()
+                    })
+                    .ToListAsync(ct);
+
+                int take = req.take > 0 ? req.take : 10;
+                var pagedResult = new ResPagedProductDto
+                {
+                    TotalItems = totalItems,
+                    TotalPages = (int)Math.Ceiling(totalItems / (double)take),
+                    CurrentPage = (req.skip / take) + 1,
+                    PageSize = take,
+                    Products = products
+                };
+
+                await this.SendApiResponseAsync(Application.Common.Result<ResPagedProductDto>.Success(pagedResult, 200), ct);
+            }
+            catch (Exception ex)
+            {
+                await this.SendApiResponseAsync(Application.Common.Result<ResPagedProductDto>.Failure($"Lỗi khi lấy danh sách sản phẩm: {ex.Message}", 500), ct);
+            }
         }
     }
 }

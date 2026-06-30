@@ -20,21 +20,11 @@ namespace Infrastructure.Repositories
             Customer? existingUser = await _context.Customers.FirstOrDefaultAsync(e => e.Email == email);
             if (existingUser != null)
             {
-                existingUser.PasswordHash = passwordHash;
-                existingUser.CustomAvatar = "default-avatar.jpg";
+                existingUser.UpdatePassword(passwordHash);
             }
             else
             {
-                var newUser = new Customer
-                {
-                    Name = fullname,
-                    Email = email,
-                    PasswordHash = passwordHash,
-                    CreatedAt = DateTime.UtcNow,
-                    Role = "User",
-                    IsActive = true,
-                    LoginProvider = "Custom"
-                };
+                var newUser = Customer.Create(fullname, email, passwordHash);
                 _context.Customers.Add(newUser);
             }
         }

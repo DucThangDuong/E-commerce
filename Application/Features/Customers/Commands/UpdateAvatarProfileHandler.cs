@@ -14,11 +14,11 @@ namespace Application.Features.Customers.Commands
     public record UpdateAvatarProfileCommand(IFormFile file, int userId) : IRequest<Result<string>>;
     public class UpdateAvatarProfileHandler : IRequestHandler<UpdateAvatarProfileCommand, Result<string>>
     {
-        private readonly IUnitOfWork _unitOfWork;
         private readonly IBlobService _blobService;
-        public UpdateAvatarProfileHandler(IUnitOfWork unitOfWork, IBlobService blobService)
+        private readonly ICustomerRepository _customerRepository;
+        public UpdateAvatarProfileHandler(IBlobService blobService, ICustomerRepository customerRepository)
         {
-            _unitOfWork = unitOfWork;
+            _customerRepository = customerRepository;
             _blobService = blobService;
         }
         public async Task<Result<string>> Handle(UpdateAvatarProfileCommand request, CancellationToken cancellationToken)
@@ -26,7 +26,7 @@ namespace Application.Features.Customers.Commands
             try
             {
                 string newAvatarUrl = await _blobService.UploadImageAsync(request.file, "avatar");
-                int result = await _unitOfWork.CustomerRepository.UpdateAvatarProfileAsync(request.userId, newAvatarUrl);
+                int result = await _customerRepository.UpdateAvatarProfileAsync(request.userId, newAvatarUrl);
                 if (result == 0)
                 {
                     return Result<string>.Failure("Failed to update avatar profile.");

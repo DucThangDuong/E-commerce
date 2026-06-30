@@ -35,14 +35,22 @@ namespace Application.Features.Order.Commands
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IAppReadDbContext _db;
 
+        private readonly ICartRepository _cartRepository;
+        private readonly IInventoryRepository _inventoryRepository;
+        private readonly IProductRepository _productRepository;
+        private readonly IOrderRepository _orderRepository;
         public CreatePaymentCommandHandler(
             IVnPayService vnPayService,
             IUnitOfWork unitOfWork,
             IConnectionMultiplexer connectionMultiplexer,
             IMediator mediator,
             IPublishEndpoint publishEndpoint,
-            IAppReadDbContext db)
+            IAppReadDbContext db, ICartRepository cartRepository, IInventoryRepository inventoryRepository, IProductRepository productRepository, IOrderRepository orderRepository)
         {
+            _cartRepository = cartRepository;
+            _inventoryRepository = inventoryRepository;
+            _productRepository = productRepository;
+            _orderRepository = orderRepository;
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
             _redisConnection = connectionMultiplexer.GetDatabase();
@@ -100,7 +108,7 @@ namespace Application.Features.Order.Commands
                     var exists = await _redisConnection.KeyExistsAsync(cacheKeyStock);
                     if (!exists)
                     {
-                        var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { item.Key }, ct);
+                        var dbStockMap = await _inventoryRepository.GetStockByColorIdsAsync(new List<int> { item.Key }, ct);
                         int dbStock = dbStockMap.ContainsKey(item.Key) ? dbStockMap[item.Key] : 0;
                         await _redisConnection.StringSetAsync(cacheKeyStock, dbStock, TimeSpan.FromDays(1));
                     }
@@ -135,9 +143,9 @@ namespace Application.Features.Order.Commands
                 var priceInfo = calculateResult.Data!;
 
                 List<int> colorIds = itemUserWantBuy.Keys.ToList();
-                Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
+                Dictionary<int, decimal> colorPrices = await _productRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
-                var reservedVehicles = await _unitOfWork.InventoryRepository.ReserveVehiclesAsync(itemUserWantBuy, ct);
+                var reservedVehicles = await _inventoryRepository.ReserveVehiclesAsync(itemUserWantBuy, ct);
 
                 var orderItems = new List<OrderItem>();
                 foreach (var vehicle in reservedVehicles)
@@ -148,7 +156,7 @@ namespace Application.Features.Order.Commands
                         {
                             await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
                         }
-                        await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(reservedVehicles.Select(v => v.VehicleId).ToList(), ct);
+                        await _inventoryRepository.ReleaseVehiclesAsync(reservedVehicles.Select(v => v.VehicleId).ToList(), ct);
                         return Result<CreatePaymentResponse>.Failure($"Sản phẩm màu ID {vehicle.ColorId} không có thông tin giá hợp lệ.", 400);
                     }
 
@@ -199,7 +207,7 @@ namespace Application.Features.Order.Commands
                 };
                 newOrder.Payment = newPayment;
 
-                await _unitOfWork.OrderRepository.AddAsync(newOrder);
+                await _orderRepository.AddAsync(newOrder);
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 if (priceInfo.CouponId.HasValue)
@@ -225,7 +233,7 @@ namespace Application.Features.Order.Commands
                         OrderId = newOrder.OrderId,
                         Message = "Đặt hàng thành công (COD)."
                     };
-                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
+                    await _cartRepository.DeleteCartItemsAsync(customerId, colorIds);
                     return Result<CreatePaymentResponse>.Success(response, 201);
                 }
                 else // VnPay
