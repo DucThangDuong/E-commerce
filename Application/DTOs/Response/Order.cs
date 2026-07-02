@@ -2,6 +2,14 @@ using Application.Features.Order.Commands;
 
 namespace Application.DTOs.Response
 {
+    public class ResOrderSummary
+    {
+        public int OrderId { get; set; }
+        public DateTime? OrderDate { get; set; }
+        public decimal TotalAmount { get; set; }
+        public string Status { get; set; } = null!;
+    }
+
     public class ResOrder
     {
         public int OrderId { get; set; }
@@ -12,6 +20,7 @@ namespace Application.DTOs.Response
         public decimal? DiscountAmount { get; set; }
         public string Status { get; set; } = null!;
         public string PaymentStatus { get; set; } = null!;
+        public string? PaymentProvider { get; set; }
         public string? PhoneNumber { get; set; }
         public string? Address { get; set; }
         public int TotalItems { get; set; }

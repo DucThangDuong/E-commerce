@@ -14,6 +14,7 @@ namespace API.EndPoints.Brand
         {
             Post("/brand");
             AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
+            Roles("Admin");
         }
 
         public override async Task HandleAsync(ReqCreateBrandDto req, CancellationToken ct)

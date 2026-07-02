@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,6 +12,7 @@ namespace Application.DTOs.Services
         public string Message { get; set; } = string.Empty;
         public string OrderId { get; set; } = string.Empty;
         public string TransactionId { get; set; } = string.Empty;
+        public string ResponseCode { get; set; } = string.Empty;
     }
     public class ResIpnDTO
     {

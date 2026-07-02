@@ -92,9 +92,10 @@ namespace Application.Features.Order.Commands
                         $"Đơn hàng phải có giá trị tối thiểu {coupon.MinOrderValue.Value:N0}đ để áp dụng mã này.", 400);
                 }
 
-                if (coupon.DiscountType == Domain.Enums.DiscountType.Percentage.ToString())
+                if (coupon.DiscountType.Equals("percentage", StringComparison.OrdinalIgnoreCase) || 
+                    coupon.DiscountType.Equals(Domain.Enums.DiscountType.Percentage.ToString(), StringComparison.OrdinalIgnoreCase))
                 {
-                    discountAmount = subTotal * coupon.DiscountValue / 100;
+                    discountAmount = subTotal * (coupon.DiscountValue / 100);
                     if (coupon.MaxDiscountAmount.HasValue && discountAmount > coupon.MaxDiscountAmount.Value)
                     {
                         discountAmount = coupon.MaxDiscountAmount.Value;

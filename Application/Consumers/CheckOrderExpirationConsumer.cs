@@ -34,7 +34,6 @@ namespace Application.Consumers
             }
 
             if (order.Status == OrderStatus.Confirmed.ToString() ||
-                order.Status == OrderStatus.Pending.ToString() ||
                 order.Status == OrderStatus.Shipping.ToString() ||
                 order.Status == OrderStatus.Completed.ToString())
             {
@@ -47,7 +46,7 @@ namespace Application.Consumers
                 return;
             }
 
-            if (order.Status == OrderStatus.Processing_Payment.ToString())
+            if (order.Status == OrderStatus.Pending.ToString())
             {
                 order.Status = OrderStatus.Cancelled.ToString();
                 order.UpdatedAt = DateTime.UtcNow;

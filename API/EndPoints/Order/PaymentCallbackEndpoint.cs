@@ -1,7 +1,5 @@
-using API.Extensions;
 using Application.IServices;
 using FastEndpoints;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace API.EndPoints.Order
 {
@@ -33,6 +31,10 @@ namespace API.EndPoints.Order
             if (response.Success)
             {
                 redirectUrl = $"{frontendUrl}?tab=completed&payment=success&orderId={response.OrderId}";
+            }
+            else if (response.ResponseCode == "24")
+            {
+                redirectUrl = $"{frontendUrl}?tab=cancelled&payment=cancelled&orderId={response.OrderId}";
             }
             else
             {

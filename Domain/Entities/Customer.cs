@@ -51,11 +51,10 @@ public partial class Customer : BaseEntity
             CreatedAt = DateTime.UtcNow,
             Role = "User",
             IsActive = true,
-            LoginProvider = "Custom"
+            LoginProvider = "Custom",
+            CustomAvatar = "https://imageshare13.blob.core.windows.net/avatar/0289ba7b-46a5-4aae-bfa5-e371a704abd5.png"
         };
-        
         customer.AddDomainEvent(new UserCreatedEvent(name, email));
-        
         return customer;
     }
 

@@ -120,7 +120,7 @@ public static class DependencyInjectionExtensions
         services.AddMassTransit(x =>
         {
             x.AddDelayedMessageScheduler();
-            x.AddConsumer<SendMail>();
+            x.AddConsumer<SendMailConsumer>();
             x.AddConsumer<CheckOrderExpirationConsumer>();
 
             x.AddEntityFrameworkOutbox<EcommerceContext>(o =>

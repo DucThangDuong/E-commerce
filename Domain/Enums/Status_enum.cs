@@ -20,7 +20,6 @@ namespace Domain.Enums
         Cancelled = -1,          // Đã hủy
         Failed = -2,             // Bị lỗi (Vd: Thanh toán thất bại)
         Pending = 0,             // Đang chờ xử lý (COD)
-        Processing_Payment = 1,  // Đang chờ thanh toán online (VnPay)
         Confirmed = 2,           // Đã xác nhận / Chuẩn bị hàng
         Shipping = 3,            // Đang giao hàng
         Completed = 4            // Hoàn thành
@@ -55,5 +54,13 @@ namespace Domain.Enums
     {
         Custom = 0,  // Đăng nhập truyền thống (Email/Password)
         Google = 1   // Đăng nhập qua Google
+    }
+
+    public enum VehicleStatus
+    {
+        Available = 0,    // Có sẵn để bán
+        Reserved = 1,     // Đã được đặt giữ (chờ thanh toán)
+        Sold = 2,         // Đã bán
+        Maintenance = 3   // Đang bảo dưỡng hoặc có lỗi
     }
 }

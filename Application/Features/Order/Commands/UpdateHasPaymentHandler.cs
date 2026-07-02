@@ -5,12 +5,7 @@ using Application.Interfaces;
 using Application.IServices;
 using Domain.Enums;
 using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Transactions;
+using MassTransit;
 
 namespace Application.Features.Order.Commands
 {
@@ -20,12 +15,12 @@ namespace Application.Features.Order.Commands
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationService _notificationService;
-        private readonly MassTransit.IPublishEndpoint _publishEndpoint;
+        private readonly IPublishEndpoint _publishEndpoint;
         private readonly IAppReadDbContext _db;
 
         private readonly ICartRepository _cartRepository;
         private readonly IOrderRepository _orderRepository;
-        public UpdateHasPaymentHandler(IUnitOfWork unitOfWork, INotificationService notificationService, MassTransit.IPublishEndpoint publishEndpoint, IAppReadDbContext db, ICartRepository cartRepository, IOrderRepository orderRepository) {
+        public UpdateHasPaymentHandler(IUnitOfWork unitOfWork, INotificationService notificationService, IPublishEndpoint publishEndpoint, IAppReadDbContext db, ICartRepository cartRepository, IOrderRepository orderRepository) {
             _cartRepository = cartRepository;
             _orderRepository = orderRepository; 
             _unitOfWork = unitOfWork;
@@ -74,11 +69,10 @@ namespace Application.Features.Order.Commands
                     return Result<ResIpnDTO>.Failure("Invalid amount", 400, new ResIpnDTO { RspCode = "04", Message = "Invalid amount" });
                 }
 
-                // 3. Kiểm tra xem đơn hàng đã được cập nhật trước đó chưa (Chống gọi IPN nhiều lần)
                 if (order.Status == OrderStatus.Confirmed.ToString() || 
                     order.Status == OrderStatus.Cancelled.ToString() || 
-                    order.Status == OrderStatus.Failed.ToString() ||
-                    order.Status == OrderStatus.Pending.ToString())
+                    order.Status == OrderStatus.Completed.ToString() ||
+                    order.Status == OrderStatus.Failed.ToString())
                 {
                     return Result<ResIpnDTO>.Failure("Order already processed", 400, new ResIpnDTO { RspCode = "02", Message = "Order already confirmed" });
                 }
@@ -106,6 +100,10 @@ namespace Application.Features.Order.Commands
                         order.OrderId.ToString(), 
                         $"Thanh toán thành công đơn hàng #{order.OrderId}"
                     );
+                }
+                else if (request.ResponseCode == "24")
+                {
+                    await _publishEndpoint.Publish(new OrderTimeoutEvent(order.OrderId), ct);
                 }
                 else
                 {

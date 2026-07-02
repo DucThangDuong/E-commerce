@@ -41,7 +41,7 @@ namespace Infrastructure.Services
             vnpay.AddRequestData("vnp_OrderType", "other");
             vnpay.AddRequestData("vnp_TxnRef", orderId.ToString());
             vnpay.AddRequestData("vnp_ReturnUrl", vnp_Returnurl);
-            vnpay.AddRequestData("vnp_ExpireDate", DateTime.Now.AddMinutes(15).ToString("yyyyMMddHHmmss"));
+            vnpay.AddRequestData("vnp_ExpireDate", DateTime.Now.AddMinutes(5).ToString("yyyyMMddHHmmss"));
 
             string paymentUrl = vnpay.CreateRequestUrl(vnp_Url, vnp_HashSecret);
             return paymentUrl;
@@ -71,11 +71,11 @@ namespace Infrastructure.Services
             {
                 if (vnp_ResponseCode == "00")
                 {
-                    return new ResVnPayDTO { Success = true, Message = "Thanh toán thành công!", OrderId = orderId, TransactionId = vnpayTranId };
+                    return new ResVnPayDTO { Success = true, Message = "Thanh toán thành công!", OrderId = orderId, TransactionId = vnpayTranId, ResponseCode = vnp_ResponseCode };
                 }
-                return new ResVnPayDTO { Success = false, Message = $"Thanh toán lỗi. Mã lỗi: {vnp_ResponseCode}", OrderId = orderId, TransactionId = vnpayTranId };
+                return new ResVnPayDTO { Success = false, Message = $"Thanh toán lỗi. Mã lỗi: {vnp_ResponseCode}", OrderId = orderId, TransactionId = vnpayTranId, ResponseCode = vnp_ResponseCode };
             }
-            return new ResVnPayDTO { Success = false, Message = "Có lỗi xảy ra trong quá trình xử lý (Sai chữ ký bảo mật)." };
+            return new ResVnPayDTO { Success = false, Message = "Có lỗi xảy ra trong quá trình xử lý (Sai chữ ký bảo mật).", ResponseCode = vnp_ResponseCode };
         }
 
         public bool ValidateSignature(IQueryCollection collections)

@@ -13,6 +13,19 @@ namespace API.EndPoints.Purchase
     {
         [QueryParam]
         public string? Status { get; set; }
+        [QueryParam]
+        public int PageIndex { get; set; } = 1;
+        [QueryParam]
+        public int PageSize { get; set; } = 10;
+    }
+
+    public class PagedResponse<T>
+    {
+        public List<T> Items { get; set; } = new();
+        public int TotalRecords { get; set; }
+        public int TotalPages { get; set; }
+        public int PageIndex { get; set; }
+        public int PageSize { get; set; }
     }
 
     public class GetPurchasesEndpoint : Endpoint<ReqGetPurchaseDto>
@@ -38,7 +51,6 @@ namespace API.EndPoints.Purchase
                 
                 var query = _db.Orders
                     .AsNoTracking()
-                    .AsSplitQuery()
                     .Where(e => e.CustomerId == customerId);
 
                 if (!string.IsNullOrEmpty(req.Status))
@@ -46,7 +58,7 @@ namespace API.EndPoints.Purchase
                     string statusLower = req.Status.ToLower();
                     if (statusLower == OrderStatus.Pending.ToString().ToLower())
                     {
-                        query = query.Where(o => o.Status == OrderStatus.Processing_Payment.ToString() || o.Status == OrderStatus.Shipping.ToString()
+                        query = query.Where(o => o.Status == OrderStatus.Shipping.ToString()
                         || o.Status == OrderStatus.Pending.ToString() || o.Status == OrderStatus.Confirmed.ToString());
                     }
                     else if (statusLower == OrderStatus.Completed.ToString().ToLower())
@@ -59,54 +71,36 @@ namespace API.EndPoints.Purchase
                     }
                 }
 
+                int totalRecords = await query.CountAsync(ct);
+                int totalPages = (int)Math.Ceiling(totalRecords / (double)req.PageSize);
+
                 var orders = await query
-                    .Select(e => new ResOrder
+                    .OrderByDescending(e => e.UpdatedAt ?? e.OrderDate)
+                    .Skip((req.PageIndex - 1) * req.PageSize)
+                    .Take(req.PageSize)
+                    .Select(e => new ResOrderSummary
                     {
-                        Address = e.OrderShippingDetail != null ? e.OrderShippingDetail.StreetAddress : "",
-                        PhoneNumber = e.OrderShippingDetail != null ? e.OrderShippingDetail.RecipientPhone : null,
                         OrderId = e.OrderId,
                         OrderDate = e.OrderDate,
-                        UpdatedAt = e.UpdatedAt,
                         TotalAmount = e.TotalAmount,
-                        OriginalAmount = e.OrderItems.Sum(oi => oi.UnitPriceAtPurchase),
-                        DiscountAmount = e.DiscountAmount,
-                        Status = e.Status,
-                        PaymentStatus = e.Payment != null ? e.Payment.PaymentStatus : "",
-                        OrderItems = e.OrderItems.Select(oi => new ResOrderWithItems
-                        {
-                            name = oi.Vehicle.Color.Product.Name,
-                            ColorId = oi.Vehicle.ColorId,
-                            ColorName = oi.Vehicle.Color.ColorName,
-                            quantity = 1,
-                            unitPriceAtPurchase = oi.UnitPriceAtPurchase,
-                            basePrice = oi.Vehicle.Color.Product.BasePrice,
-                            imageUrl = oi.Vehicle.Color.Product.ProductImages.Where(pi => pi.ColorId == null || pi.ColorId == oi.Vehicle.ColorId).Select(pi => pi.ImageUrl).ToList()
-                        }).ToList()
+                        Status = e.Status
                     })
-                    .OrderByDescending(e => e.OrderDate)
                     .ToListAsync(ct);
 
-                foreach (var order in orders)
+                var pagedResponse = new PagedResponse<ResOrderSummary>
                 {
-                    order.OrderItems = order.OrderItems
-                        .GroupBy(oi => new { oi.ColorId, oi.ColorName, oi.name, oi.unitPriceAtPurchase, oi.basePrice })
-                        .Select(g => new ResOrderWithItems
-                        {
-                            ColorId = g.Key.ColorId,
-                            ColorName = g.Key.ColorName,
-                            name = g.Key.name,
-                            unitPriceAtPurchase = g.Key.unitPriceAtPurchase,
-                            basePrice = g.Key.basePrice,
-                            quantity = g.Sum(x => x.quantity),
-                            imageUrl = g.First().imageUrl
-                        }).ToList();
-                }
+                    Items = orders,
+                    TotalRecords = totalRecords,
+                    TotalPages = totalPages,
+                    PageIndex = req.PageIndex,
+                    PageSize = req.PageSize
+                };
 
-                await this.SendApiResponseAsync(Result<List<ResOrder>>.Success(orders), ct);
+                await this.SendApiResponseAsync(Result<PagedResponse<ResOrderSummary>>.Success(pagedResponse), ct);
             }
             catch (Exception ex)
             {
-                await this.SendApiResponseAsync(Result<List<ResOrder>>.Failure("An internal error occurred while fetching orders.", 500), ct);
+                await this.SendApiResponseAsync(Result<PagedResponse<ResOrderSummary>>.Failure("An internal error occurred while fetching orders.", 500), ct);
             }
         }
     }

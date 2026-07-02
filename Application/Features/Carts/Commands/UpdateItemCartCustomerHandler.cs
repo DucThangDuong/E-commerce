@@ -40,7 +40,6 @@ namespace Application.Features.Carts.Commands
                 {
                     await _cartRepository.DeleteCartByIdAsync(command.CartId, command.CustomerId);
                     await _unitOfWork.SaveChangesAsync(ct);
-                    // Return a result with quantity 0 to indicate deletion
                     return Result<ResCartDto>.Success(new ResCartDto { CartId = command.CartId, Quantity = 0 }, 200);
                 }
 
@@ -60,7 +59,6 @@ namespace Application.Features.Carts.Commands
                 existingCart.Quantity = command.Quantity;
                 await _unitOfWork.SaveChangesAsync(ct);
 
-                // Fetch the updated full DTO
                 var result = await _db.Carts
                     .AsNoTracking()
                     .Where(e => e.CartId == command.CartId)

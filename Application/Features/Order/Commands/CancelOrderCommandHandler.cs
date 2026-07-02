@@ -46,7 +46,6 @@ namespace Application.Features.Order.Commands
                 if (!order.Status.Equals(Domain.Enums.OrderStatus.Pending.ToString(), StringComparison.OrdinalIgnoreCase))
                     return Result<string>.Failure("Chỉ có thể hủy đơn hàng đang ở trạng thái chờ xử lý (Pending).", 400);
 
-                // Tìm ReasonId từ DB
                 var cancellationReasons = await _db.CancellationReasons.ToListAsync(cancellationToken);
                 var matchedReason = cancellationReasons.FirstOrDefault(x => x.Content.Equals(request.Reason, StringComparison.OrdinalIgnoreCase));
                 

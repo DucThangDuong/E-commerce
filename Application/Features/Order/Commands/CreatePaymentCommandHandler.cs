@@ -35,22 +35,14 @@ namespace Application.Features.Order.Commands
         private readonly IPublishEndpoint _publishEndpoint;
         private readonly IAppReadDbContext _db;
 
-        private readonly ICartRepository _cartRepository;
-        private readonly IInventoryRepository _inventoryRepository;
-        private readonly IProductRepository _productRepository;
-        private readonly IOrderRepository _orderRepository;
         public CreatePaymentCommandHandler(
             IVnPayService vnPayService,
             IUnitOfWork unitOfWork,
             IConnectionMultiplexer connectionMultiplexer,
             IMediator mediator,
             IPublishEndpoint publishEndpoint,
-            IAppReadDbContext db, ICartRepository cartRepository, IInventoryRepository inventoryRepository, IProductRepository productRepository, IOrderRepository orderRepository)
+            IAppReadDbContext db)
         {
-            _cartRepository = cartRepository;
-            _inventoryRepository = inventoryRepository;
-            _productRepository = productRepository;
-            _orderRepository = orderRepository;
             _vnPayService = vnPayService;
             _unitOfWork = unitOfWork;
             _redisConnection = connectionMultiplexer.GetDatabase();
@@ -62,7 +54,6 @@ namespace Application.Features.Order.Commands
         public async Task<Result<CreatePaymentResponse>> Handle(CreatePaymentCommand request, CancellationToken ct)
         {
             string idempotencyKey = $"Idempotency:Payment:{request.IdempotencyKey}";
-            
             if (request.TypePayment == 1)
             {
                 var cachedResponse = await _redisConnection.StringGetAsync(idempotencyKey);
@@ -82,7 +73,7 @@ namespace Application.Features.Order.Commands
                     return Result<CreatePaymentResponse>.Failure("Giao dịch đang được xử lý.", 409);
                 }
             }
-
+            // kiểm tra tồn kho
             var itemUserWantBuy = new Dictionary<int, int>();
             foreach (var item in request.Items)
             {
@@ -108,7 +99,7 @@ namespace Application.Features.Order.Commands
                     var exists = await _redisConnection.KeyExistsAsync(cacheKeyStock);
                     if (!exists)
                     {
-                        var dbStockMap = await _inventoryRepository.GetStockByColorIdsAsync(new List<int> { item.Key }, ct);
+                        var dbStockMap = await _unitOfWork.InventoryRepository.GetStockByColorIdsAsync(new List<int> { item.Key }, ct);
                         int dbStock = dbStockMap.ContainsKey(item.Key) ? dbStockMap[item.Key] : 0;
                         await _redisConnection.StringSetAsync(cacheKeyStock, dbStock, TimeSpan.FromDays(1));
                     }
@@ -129,7 +120,7 @@ namespace Application.Features.Order.Commands
 
                     successItems.Add(item.Key, item.Value);
                 }
-
+                // tính toán đơn hàng
                 var calculateResult = await _mediator.Send(new CalculateOrderCommand(request.Items, request.CouponCode, customerId), ct);
                 if (!calculateResult.IsSuccess)
                 {
@@ -143,10 +134,10 @@ namespace Application.Features.Order.Commands
                 var priceInfo = calculateResult.Data!;
 
                 List<int> colorIds = itemUserWantBuy.Keys.ToList();
-                Dictionary<int, decimal> colorPrices = await _productRepository.GetPricesByColorIdsAsync(colorIds, ct);
+                Dictionary<int, decimal> colorPrices = await _unitOfWork.ProductRepository.GetPricesByColorIdsAsync(colorIds, ct);
 
-                var reservedVehicles = await _inventoryRepository.ReserveVehiclesAsync(itemUserWantBuy, ct);
-
+                var reservedVehicles = await _unitOfWork.InventoryRepository.ReserveVehiclesAsync(itemUserWantBuy, ct);
+                // viết hóa đơn
                 var orderItems = new List<OrderItem>();
                 foreach (var vehicle in reservedVehicles)
                 {
@@ -156,7 +147,7 @@ namespace Application.Features.Order.Commands
                         {
                             await _redisConnection.StringIncrementAsync($"Color:Stock:{success.Key}", success.Value);
                         }
-                        await _inventoryRepository.ReleaseVehiclesAsync(reservedVehicles.Select(v => v.VehicleId).ToList(), ct);
+                        await _unitOfWork.InventoryRepository.ReleaseVehiclesAsync(reservedVehicles.Select(v => v.VehicleId).ToList(), ct);
                         return Result<CreatePaymentResponse>.Failure($"Sản phẩm màu ID {vehicle.ColorId} không có thông tin giá hợp lệ.", 400);
                     }
 
@@ -167,14 +158,8 @@ namespace Application.Features.Order.Commands
                     });
                 }
 
-                string orderStatus = request.TypePayment == 0
-                    ? OrderStatus.Pending.ToString()
-                    : OrderStatus.Processing_Payment.ToString();
-
-                string paymentStatus = request.TypePayment == 0
-                    ? PaymentStatus.Unpaid.ToString()
-                    : PaymentStatus.Pending.ToString();
-
+                string orderStatus = OrderStatus.Pending.ToString();
+                string paymentStatus = PaymentStatus.Unpaid.ToString();
                 string provider = request.TypePayment == 0
                     ? PaymentProvider.COD.ToString()
                     : PaymentProvider.VnPay.ToString();
@@ -207,7 +192,7 @@ namespace Application.Features.Order.Commands
                 };
                 newOrder.Payment = newPayment;
 
-                await _orderRepository.AddAsync(newOrder);
+                await _unitOfWork.OrderRepository.AddAsync(newOrder);
                 await _unitOfWork.SaveChangesAsync(ct);
 
                 if (priceInfo.CouponId.HasValue)
@@ -233,7 +218,7 @@ namespace Application.Features.Order.Commands
                         OrderId = newOrder.OrderId,
                         Message = "Đặt hàng thành công (COD)."
                     };
-                    await _cartRepository.DeleteCartItemsAsync(customerId, colorIds);
+                    await _unitOfWork.CartRepository.DeleteCartItemsAsync(customerId, colorIds);
                     return Result<CreatePaymentResponse>.Success(response, 201);
                 }
                 else // VnPay
@@ -242,14 +227,16 @@ namespace Application.Features.Order.Commands
 
                     await _publishEndpoint.Publish(new OrderTimeoutEvent(newOrder.OrderId), context =>
                     {
-                        context.Delay = TimeSpan.FromMinutes(15);
+                        context.Delay = TimeSpan.FromMinutes(5);
                     }, ct);
+                    
+                    await _unitOfWork.SaveChangesAsync(ct);
 
                     var response = new CreatePaymentResponse
                     {
                         OrderId = newOrder.OrderId,
                         PaymentUrl = paymentUrl,
-                        Message = "Vui lòng thanh toán trong 15 phút."
+                        Message = "Vui lòng thanh toán trong 5 phút."
                     };
                     await _redisConnection.StringSetAsync(idempotencyKey,
                         JsonSerializer.Serialize(response), TimeSpan.FromHours(24));
